@@ -17,6 +17,7 @@
     X,
   } from "lucide-svelte";
   import { api } from "../lib/api";
+  import Notice from "../components/Notice.svelte";
   import { progress } from "../lib/progress";
   import { cancelJob } from "../lib/jobs";
   import { repos } from "../lib/repoStore";
@@ -390,12 +391,7 @@
   }
 </style>
 
-  {#if notice}
-    <div class="flex items-center gap-2 px-4 py-3 rounded-lg bg-success/10 border border-success/30 text-success text-[0.82rem]">
-      <CheckCircle size={16} class="shrink-0" />
-      <span>{notice}</span>
-    </div>
-  {/if}
+  <Notice bind:message={notice} />
 
   {#if errorMessage}
     <div class="flex items-center gap-2 px-4 py-3 rounded-lg bg-danger/10 border border-danger/30 text-danger text-[0.82rem]">

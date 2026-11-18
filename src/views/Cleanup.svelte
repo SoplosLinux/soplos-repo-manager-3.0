@@ -3,6 +3,7 @@
   import { _, locale } from "svelte-i18n";
   import { Eraser, HardDrive, GitBranch, AlertTriangle, CheckCircle, RefreshCw, Sparkles } from "lucide-svelte";
   import { api } from "../lib/api";
+  import Notice from "../components/Notice.svelte";
   import { progress } from "../lib/progress";
   import { activeRepo, repos } from "../lib/repoStore";
   import { formatSize } from "../lib/packages";
@@ -102,12 +103,7 @@
     {$_("cleanup.intro")}
   </p>
 
-  {#if notice}
-    <div class="flex items-center gap-2 p-3 rounded bg-success/10 border border-success/30 text-success text-[0.85rem]">
-      <CheckCircle class="w-4 h-4 shrink-0" />
-      <span>{notice}</span>
-    </div>
-  {/if}
+  <Notice bind:message={notice} />
 
   {#if errorMessage}
     <div class="flex items-center gap-2 p-3 rounded bg-danger/10 border border-danger/30 text-danger text-[0.85rem]">

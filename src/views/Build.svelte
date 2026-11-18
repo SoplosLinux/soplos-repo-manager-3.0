@@ -312,7 +312,7 @@
           <span class={fieldLabel}>{$_("build.icon")}</span>
           <div class="flex gap-2">
             <input class="{inputClass} font-mono" readonly value={icon} placeholder="PNG, SVG" />
-            <button class={smallButton} on:click={chooseIcon}><ImagePlus size={14} /></button>
+            <button class={smallButton} on:click={chooseIcon}><ImagePlus size={14} />{$_("build.choose")}</button>
           </div>
         </div>
         <label class="flex flex-col gap-1">

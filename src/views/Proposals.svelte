@@ -3,6 +3,7 @@
   import { _ } from "svelte-i18n";
   import { GitPullRequest, Check, X, RefreshCw, ExternalLink, Package, User } from "lucide-svelte";
   import { api } from "../lib/api";
+  import Notice from "../components/Notice.svelte";
   import { progress } from "../lib/progress";
   import { activeRepo, repos } from "../lib/repoStore";
   import Select from "../components/Select.svelte";
@@ -170,11 +171,7 @@
     </button>
   </div>
 
-  {#if notice}
-    <div class="px-4 py-3 rounded-lg bg-success/10 border border-success/30 text-success text-[0.82rem]">
-      {notice}
-    </div>
-  {/if}
+  <Notice bind:message={notice} />
 
   {#if errorMessage}
     <div class="px-4 py-3 rounded-lg bg-danger/10 border border-danger/30 text-danger text-[0.82rem] break-all">

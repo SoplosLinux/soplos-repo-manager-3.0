@@ -326,6 +326,19 @@ pub fn republish(app: tauri::AppHandle, name: String) -> RepoResult {
     result
 }
 
+/// The signed indexes, the data for the software centers (DEP-11) made from
+/// the packages, and the Release signed again with it. What Packages and an
+/// accepted proposal both do before publishing.
+pub(crate) fn export_with_store(dir: &Path, repo: &repos::Repo) -> Result<(), String> {
+    repos::export_signed(dir)?;
+    let packages = read_indexes(dir);
+    import_missing(dir, &packages);
+    let names: Vec<String> = packages.into_iter().map(|p| p.name).collect();
+    let files = appstream::regenerate(dir, repo, &names)?;
+    let key = gpg::key_for(&repo.gpg_key)?;
+    appstream::sign_release(dir, &files, &key.fingerprint)
+}
+
 /// After its packages change: the indexes, the data for the software centers
 /// (DEP-11), the signature and the publication, in that order.
 fn finish(app: &tauri::AppHandle, repo: &repos::Repo, message: &str, result: &mut RepoResult) -> Result<(), String> {
@@ -334,15 +347,9 @@ fn finish(app: &tauri::AppHandle, repo: &repos::Repo, message: &str, result: &mu
     let dir = PathBuf::from(&repo.dir);
     tell(app, &repo.name, "signing", 0, 0, "");
     logger.step("signExport", &[]);
-    repos::export_signed(&dir)?;
     tell(app, &repo.name, "store", 0, 0, "");
     logger.step("appstream", &[]);
-    let packages = read_indexes(&dir);
-    import_missing(&dir, &packages);
-    let names: Vec<String> = packages.into_iter().map(|p| p.name).collect();
-    let files = appstream::regenerate(&dir, repo, &names)?;
-    let key = gpg::key_for(&repo.gpg_key)?;
-    appstream::sign_release(&dir, &files, &key.fingerprint)?;
+    export_with_store(&dir, repo)?;
     if repo.git_url.trim().is_empty() {
         result.publish_error = Some("no-git".to_string());
         logger.step("localOnly", &[]);

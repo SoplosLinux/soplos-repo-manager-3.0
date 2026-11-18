@@ -12,6 +12,26 @@ First stable release.
 - Manual page (`man soplos-repo-manager`), installed compressed.
 - README with the screenshots, the pages, how a repository is published, the security of the tokens and the shortcuts.
 
+### Changed
+
+- The toolbar of Send looks at the room it has, not at the width of the window: the destination and the buttons share one row while their measured widths fit, and below that they take two cells that fill the bar, so the buttons grow instead of leaving empty space. The destination is short on purpose and cuts a long name.
+- Sending a proposal is made with the GitHub API and no longer with Git: each `.deb` goes up as a blob, a tree is made over the one of the base branch, the commit is created there and the branch is a reference to it. Only the package travels; nothing of the repository is downloaded, so a destination that holds gigabytes of packages costs the package itself.
+- Accepting a proposal no longer fetches its branch: the packages of the pull request are downloaded with the GitHub API, by the commit of the proposal, so it also works when the proposal comes from a fork. The branch is removed through the API instead of a `git push --delete` in the local copy.
+- The green notices of Proposals, Send and Cleanup go away by themselves after five seconds and have a close button, instead of staying on the page.
+
+### Fixed
+
+- A proposal could not be sent to a large repository: the base branch was downloaded whole before anything else — with git, even a clone without files made Git ask for every missing object when writing the tree — so the job never reached the pull request and no error explained why.
+- The pull request is created with the owner in its head (`owner:branch`), so a collaborator account can open it; when the branch already has one, its number is returned instead of failing.
+- A refused pull request now shows the reason GitHub gives, with the detail of a validation failure, instead of a generic message.
+- Every request to the GitHub API looks at the answer: when GitHub refuses it (no permission, not found, validation), the job fails with the reason GitHub gives. Before, a refusal was taken as done: rejecting a proposal with a token that could not close pull requests said "rejected" while the pull request stayed open.
+- Accepting a proposal never publishes an empty or half repository. Every package is checked before the repository is touched (a valid package, with Section and Priority, for an architecture of the repository); with "clean first" the packages the repository had are set aside next to it and put back if anything fails before publishing, and a package reprepro refuses stops the job instead of being a warning.
+- Accepting a proposal makes the data of the software centers (DEP-11) and signs the Release again, as adding packages does, so an application in a proposal shows in the Store.
+- Accepting a proposal reads every file of the pull request, page after page, and not only the first hundred; the list of proposals shows all of them too.
+- When accepting fails half way, the job bar says so and the temporary folder of the packages is removed, instead of staying "running" and leaving the folder in the repository.
+- Rejecting a proposal also deletes its branch, as accepting does.
+- Texts that showed their key or a fixed Spanish sentence: the save button of a destination, the loading line of Destinations and Accounts, the copy button of a destination and the description placeholder, now in the eight languages.
+
 ## [3.0.0-alpha] - 2026-11-18
 
 ### Added

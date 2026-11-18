@@ -5,7 +5,7 @@
 // and closes the PR.
 
 use super::credentials;
-use super::publish::{self, git_logged, git_logged_ok};
+use super::publish;
 use super::repos;
 use super::run::{run, JobLogger};
 use serde::{Deserialize, Serialize};
@@ -14,9 +14,8 @@ use std::path::Path;
 use std::time::Duration;
 
 const API_TIMEOUT: Duration = Duration::from_secs(30);
-// Downloading or uploading a repository of kernels can take long: a shallow
-// fetch of the base branch is still a whole copy of its current files.
-const NETWORK_TIMEOUT: Duration = Duration::from_secs(3600);
+// The package itself travels here.
+const PUSH_TIMEOUT: Duration = Duration::from_secs(1800);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -69,64 +68,151 @@ fn github_headers() -> (Vec<String>, String) {
 
 // ── GitHub API client via curl ────────────────────────────────────────────────
 
-fn api_get(endpoint: &str) -> Result<serde_json::Value, String> {
-    let mut args = vec!["-sS".to_string(), "-X".to_string(), "GET".to_string()];
+/// One request to the GitHub API. curl writes the HTTP status after the body
+/// (`-w`), so an answer of GitHub that refuses the request (403, 404, 422...)
+/// is an error with the reason GitHub gives, never taken as done. `body_file`
+/// sends a body too large for a command line (a package in base64).
+fn request(method: &str, endpoint: &str, body: Option<&serde_json::Value>, body_file: Option<&Path>, timeout: Duration) -> Result<serde_json::Value, String> {
     let (header_args, header_lines) = github_headers();
+    let mut args = vec!["-sS".to_string(), "-X".to_string(), method.to_string(), "-w".to_string(), "\n%{http_code}".to_string()];
     args.extend(header_args);
+    if body.is_some() || body_file.is_some() {
+        args.push("-H".to_string());
+        args.push("Content-Type: application/json".to_string());
+    }
+    if let Some(value) = body {
+        args.push("-d".to_string());
+        args.push(serde_json::to_string(value).map_err(|e| e.to_string())?);
+    }
+    if let Some(file) = body_file {
+        args.push("--data-binary".to_string());
+        args.push(format!("@{}", file.display()));
+    }
     args.push(format!("https://api.github.com/{}", endpoint.trim_start_matches('/')));
 
     let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    let res = run("curl", &arg_refs, None, Some(&header_lines), API_TIMEOUT)?;
+    let res = run("curl", &arg_refs, None, Some(&header_lines), timeout)?;
     if !res.ok {
         return Err(res.error("GitHub API"));
     }
-    serde_json::from_str(&res.stdout).map_err(|e| format!("Invalid answer from GitHub: {e}"))
+    let (text, status) = res.stdout.trim_end().rsplit_once('\n').unwrap_or(("", res.stdout.trim()));
+    let status: u16 = status.trim().parse().unwrap_or(0);
+    let value: serde_json::Value = if text.trim().is_empty() { serde_json::Value::Null } else { serde_json::from_str(text).map_err(|e| format!("Invalid answer from GitHub: {e}"))? };
+    if !(200..300).contains(&status) {
+        return Err(format!("GitHub ({status}): {}", github_error(&value)));
+    }
+    Ok(value)
+}
+
+fn api_get(endpoint: &str) -> Result<serde_json::Value, String> {
+    request("GET", endpoint, None, None, API_TIMEOUT)
 }
 
 fn api_post(endpoint: &str, body: &serde_json::Value) -> Result<serde_json::Value, String> {
-    let mut args = vec![
-        "-sS".to_string(),
-        "-X".to_string(),
-        "POST".to_string(),
-        "-H".to_string(),
-        "Content-Type: application/json".to_string(),
-    ];
-    let (header_args, header_lines) = github_headers();
-    args.extend(header_args);
-    let payload = serde_json::to_string(body).map_err(|e| e.to_string())?;
-    args.push("-d".to_string());
-    args.push(payload);
-    args.push(format!("https://api.github.com/{}", endpoint.trim_start_matches('/')));
-
-    let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    let res = run("curl", &arg_refs, None, Some(&header_lines), API_TIMEOUT)?;
-    if !res.ok {
-        return Err(res.error("GitHub API"));
-    }
-    serde_json::from_str(&res.stdout).map_err(|e| format!("Invalid answer from GitHub: {e}"))
+    request("POST", endpoint, Some(body), None, API_TIMEOUT)
 }
 
 fn api_patch(endpoint: &str, body: &serde_json::Value) -> Result<serde_json::Value, String> {
-    let mut args = vec![
-        "-sS".to_string(),
-        "-X".to_string(),
-        "PATCH".to_string(),
-        "-H".to_string(),
-        "Content-Type: application/json".to_string(),
-    ];
+    request("PATCH", endpoint, Some(body), None, API_TIMEOUT)
+}
+
+fn api_delete(endpoint: &str) -> Result<(), String> {
+    request("DELETE", endpoint, None, None, API_TIMEOUT).map(|_| ())
+}
+
+/// Sends a body too large for a command line, such as a package in base64: the
+/// JSON goes to a private temporary file that curl reads, and is removed after.
+fn api_post_file(endpoint: &str, body: &serde_json::Value) -> Result<serde_json::Value, String> {
+    let path = std::env::temp_dir().join(format!(
+        "soplos-api-{}-{}.json",
+        std::process::id(),
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_nanos())
+            .unwrap_or(0)
+    ));
+    fs::write(&path, serde_json::to_vec(body).map_err(|e| e.to_string())?).map_err(|e| e.to_string())?;
+    let res = request("POST", endpoint, None, Some(&path), PUSH_TIMEOUT);
+    let _ = fs::remove_file(&path);
+    res
+}
+
+/// Every page of a list of the API (100 items a page, as many pages as there are).
+fn api_get_all(endpoint: &str) -> Result<Vec<serde_json::Value>, String> {
+    let join = if endpoint.contains('?') { '&' } else { '?' };
+    let mut all = Vec::new();
+    for page in 1..=50 {
+        let items = api_get(&format!("{endpoint}{join}per_page=100&page={page}"))?;
+        let items = items.as_array().cloned().unwrap_or_default();
+        let last = items.len() < 100;
+        all.extend(items);
+        if last {
+            break;
+        }
+    }
+    Ok(all)
+}
+
+/// Uploads a package as a blob of the repository and returns its SHA.
+fn upload_blob(owner: &str, repo: &str, file: &Path) -> Result<String, String> {
+    let bytes = fs::read(file).map_err(|e| format!("{} could not be read: {e}", file.display()))?;
+    use base64::Engine;
+    let encoded = base64::engine::general_purpose::STANDARD.encode(&bytes);
+    let body = serde_json::json!({ "content": encoded, "encoding": "base64" });
+    let res = api_post_file(&format!("repos/{owner}/{repo}/git/blobs"), &body)?;
+    res.get("sha")
+        .and_then(|s| s.as_str())
+        .map(|s| s.to_string())
+        .ok_or_else(|| format!("GitHub refused the package {}: {}", file.display(), github_error(&res)))
+}
+
+/// Writes the contents of a file of the repository in `dest`. The raw media
+/// type makes curl receive the bytes of the package, not its base64 form.
+fn api_download(endpoint: &str, dest: &Path) -> Result<(), String> {
     let (header_args, header_lines) = github_headers();
+    let mut args = vec![
+        "-sSL".to_string(),
+        "--fail".to_string(),
+        "-H".to_string(),
+        "Accept: application/vnd.github.raw".to_string(),
+        "-o".to_string(),
+        dest.to_string_lossy().to_string(),
+    ];
     args.extend(header_args);
-    let payload = serde_json::to_string(body).map_err(|e| e.to_string())?;
-    args.push("-d".to_string());
-    args.push(payload);
     args.push(format!("https://api.github.com/{}", endpoint.trim_start_matches('/')));
 
     let arg_refs: Vec<&str> = args.iter().map(|s| s.as_str()).collect();
-    let res = run("curl", &arg_refs, None, Some(&header_lines), API_TIMEOUT)?;
+    let res = run("curl", &arg_refs, None, Some(&header_lines), PUSH_TIMEOUT)?;
     if !res.ok {
-        return Err(res.error("GitHub API"));
+        return Err(format!("The package could not be downloaded: {}", res.error("GitHub")));
     }
-    serde_json::from_str(&res.stdout).map_err(|e| format!("Invalid answer from GitHub: {e}"))
+    Ok(())
+}
+
+/// The reason GitHub gives for refusing a request, with the detail of a
+/// validation failure when there is one.
+fn github_error(value: &serde_json::Value) -> String {
+    let mut text = value
+        .get("message")
+        .and_then(|m| m.as_str())
+        .unwrap_or("no reason given")
+        .to_string();
+    if let Some(errors) = value.get("errors").and_then(|e| e.as_array()) {
+        let detail: Vec<String> = errors
+            .iter()
+            .filter_map(|e| {
+                e.get("message")
+                    .and_then(|m| m.as_str())
+                    .map(|m| m.to_string())
+                    .or_else(|| e.get("field").and_then(|f| f.as_str()).map(|f| format!("{f} is not valid")))
+                    .or_else(|| e.get("code").and_then(|c| c.as_str()).map(|c| c.to_string()))
+            })
+            .collect();
+        if !detail.is_empty() {
+            text.push_str(&format!(" ({})", detail.join("; ")));
+        }
+    }
+    text
 }
 
 // ── Commands ──────────────────────────────────────────────────────────────────
@@ -156,9 +242,9 @@ pub fn list_proposals(name: String) -> Result<Vec<Proposal>, String> {
 
         // Query PR files
         let mut files = Vec::new();
-        if let Ok(files_json) = api_get(&format!("repos/{owner}/{repo_name}/pulls/{number}/files")) {
-            if let Some(file_items) = files_json.as_array() {
-                for f in file_items {
+        if let Ok(file_items) = api_get_all(&format!("repos/{owner}/{repo_name}/pulls/{number}/files")) {
+            {
+                for f in &file_items {
                     let filename = f.get("filename").and_then(|v| v.as_str()).unwrap_or("").to_string();
                     let raw_url = f.get("raw_url").and_then(|v| v.as_str()).unwrap_or("").to_string();
                     if filename.ends_with(".deb") {
@@ -188,9 +274,10 @@ pub fn list_proposals(name: String) -> Result<Vec<Proposal>, String> {
     Ok(proposals)
 }
 
-/// Creates a new proposal: copies the specified .deb files into an isolated branch,
-/// pushes the branch to GitHub, and creates a Pull Request against the base branch.
-/// Works completely independently of local reprepro installations and GPG keys.
+/// Creates a new proposal with the GitHub API: the .deb files go up as blobs, a
+/// commit is made over the base branch and a Pull Request is opened from it.
+/// Nothing of the repository is downloaded, git is not used and no local
+/// reprepro installation or GPG key is involved.
 #[tauri::command(async)]
 pub fn send_proposal(
     app: tauri::AppHandle,
@@ -243,81 +330,111 @@ pub fn send_proposal(
         .unwrap_or(0);
     let proposal_branch = format!("proposal/{}-{}", sanitized_title, timestamp);
 
-    // Create an isolated temporary workspace in std::env::temp_dir()
-    let tmp_dir = std::env::temp_dir().join(format!("soplos-send-{}-{}", std::process::id(), timestamp));
-    let _ = fs::remove_dir_all(&tmp_dir);
-    fs::create_dir_all(&tmp_dir).map_err(|e| format!("The temporary folder could not be made: {e}"))?;
-
-    let (author_name, author_email) = if let Ok(u) = credentials::get_github_user() {
-        let name = u.name.filter(|n| !n.trim().is_empty()).unwrap_or_else(|| u.login.clone());
-        let email = format!("{}@users.noreply.github.com", u.login);
-        (name, email)
-    } else {
-        ("Contributor".to_string(), "contributor@users.noreply.github.com".to_string())
-    };
-
+    // The whole proposal is made with the API: the packages go up as blobs, the
+    // branch is a tree over the one of the base branch and the commit is made
+    // there. Nothing of the repository is downloaded and git is not used, so a
+    // destination that holds gigabytes of packages costs the package itself.
     let run_send = || -> Result<u64, String> {
-        logger.step("workspace", &[("name", &display_name)]);
-        git_logged_ok(Some(&logger), &tmp_dir, &["init"], API_TIMEOUT)?;
-        git_logged_ok(Some(&logger), &tmp_dir, &["config", "user.name", &author_name], API_TIMEOUT)?;
-        git_logged_ok(Some(&logger), &tmp_dir, &["config", "user.email", &author_email], API_TIMEOUT)?;
-
-        let clean = credentials::clean_url(&git_url);
-        git_logged_ok(Some(&logger), &tmp_dir, &["remote", "add", "origin", &clean], API_TIMEOUT)?;
-
         logger.step("fetchBase", &[("branch", &base_branch)]);
-        git_logged_ok(Some(&logger), &tmp_dir, &["fetch", "--depth", "1", "origin", &base_branch], NETWORK_TIMEOUT)?;
+        let base_ref = api_get(&format!("repos/{owner}/{repo_name}/git/ref/heads/{base_branch}"))?;
+        let base_sha = base_ref
+            .get("object")
+            .and_then(|o| o.get("sha"))
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| format!("The branch {base_branch} could not be read: {}", github_error(&base_ref)))?
+            .to_string();
 
-        logger.step("createBranch", &[("branch", &proposal_branch)]);
-        git_logged_ok(Some(&logger), &tmp_dir, &["checkout", "-b", &proposal_branch, &format!("origin/{base_branch}")], NETWORK_TIMEOUT)?;
+        let base_commit = api_get(&format!("repos/{owner}/{repo_name}/git/commits/{base_sha}"))?;
+        let base_tree = base_commit
+            .get("tree")
+            .and_then(|t| t.get("sha"))
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| format!("The tree of {base_branch} could not be read: {}", github_error(&base_commit)))?
+            .to_string();
 
-        // Copy packages into a staging/ folder on the branch
-        let staging_dir = tmp_dir.join("staging");
-        fs::create_dir_all(&staging_dir).map_err(|e| e.to_string())?;
-
+        let mut entries = Vec::new();
         for p in &paths {
             let src = Path::new(p);
-            if let Some(fname) = src.file_name() {
-                let dst = staging_dir.join(fname);
-                logger.step("addPackage", &[("file", &fname.to_string_lossy())]);
-                fs::copy(src, &dst).map_err(|e| format!("{} could not be copied: {}", p, e))?;
-            }
+            let Some(fname) = src.file_name().map(|n| n.to_string_lossy().to_string()) else { continue };
+            logger.step("addPackage", &[("file", &fname)]);
+            let sha = upload_blob(&owner, &repo_name, src)?;
+            entries.push(serde_json::json!({
+                "path": format!("staging/{fname}"),
+                "mode": "100644",
+                "type": "blob",
+                "sha": sha
+            }));
         }
 
-        // Git add, commit, push
         logger.step("commitProposal", &[]);
-        git_logged_ok(Some(&logger), &tmp_dir, &["add", "-f", "staging/"], NETWORK_TIMEOUT)?;
-        git_logged_ok(
-            Some(&logger),
-            &tmp_dir,
-            &["commit", "-m", &format!("Proposal: {}\n\n{}", title, description)],
-            API_TIMEOUT,
-        )?;
+        let tree_body = serde_json::json!({ "base_tree": base_tree, "tree": entries });
+        let tree = api_post(&format!("repos/{owner}/{repo_name}/git/trees"), &tree_body)?;
+        let tree_sha = tree
+            .get("sha")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| format!("The tree of the proposal could not be made: {}", github_error(&tree)))?
+            .to_string();
 
-        logger.step("pushBranch", &[("branch", &proposal_branch)]);
-        git_logged_ok(Some(&logger), &tmp_dir, &["push", "-u", "origin", &proposal_branch], NETWORK_TIMEOUT)?;
+        let commit_body = serde_json::json!({
+            "message": format!("Proposal: {}\n\n{}", title, description),
+            "tree": tree_sha,
+            "parents": [base_sha]
+        });
+        let commit = api_post(&format!("repos/{owner}/{repo_name}/git/commits"), &commit_body)?;
+        let commit_sha = commit
+            .get("sha")
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| format!("The commit of the proposal could not be made: {}", github_error(&commit)))?
+            .to_string();
+
+        logger.step("createBranch", &[("branch", &proposal_branch)]);
+        let ref_body = serde_json::json!({
+            "ref": format!("refs/heads/{proposal_branch}"),
+            "sha": commit_sha
+        });
+        let created = api_post(&format!("repos/{owner}/{repo_name}/git/refs"), &ref_body)?;
+        if created.get("ref").is_none() {
+            return Err(format!("The branch of the proposal could not be made: {}", github_error(&created)));
+        }
 
         // Call GitHub API to create Pull Request
         logger.step("openPr", &[]);
         let pr_body = serde_json::json!({
             "title": title,
             "body": format!("{}\n\n---\n*{}*", description, footer.trim()),
-            "head": proposal_branch,
+            "head": proposal_branch.clone(),
             "base": base_branch
         });
 
-        let res = api_post(&format!("repos/{owner}/{repo_name}/pulls"), &pr_body)?;
-        let pr_number = res.get("number").and_then(|v| v.as_u64()).ok_or_else(|| {
-            let msg = res.get("message").and_then(|m| m.as_str()).unwrap_or("The pull request could not be made");
-            format!("Error de GitHub: {msg}")
-        })?;
+        let res = api_post(&format!("repos/{owner}/{repo_name}/pulls"), &pr_body);
+        let pr_number = match res.as_ref().ok().and_then(|r| r.get("number")).and_then(|v| v.as_u64()) {
+            Some(number) => number,
+            None => {
+                // The branch may already carry its proposal: GitHub then
+                // refuses a second one, and the number of the first is the
+                // answer the user asked for.
+                let existing = api_get(&format!(
+                    "repos/{owner}/{repo_name}/pulls?state=open&head={owner}:{proposal_branch}"
+                ))
+                .ok()
+                .and_then(|list| {
+                    list.as_array()
+                        .and_then(|items| items.first())
+                        .and_then(|pr| pr.get("number"))
+                        .and_then(|v| v.as_u64())
+                });
+                match existing {
+                    Some(number) => number,
+                    None => return Err(format!("GitHub refused the pull request: {}", res.err().unwrap_or_default())),
+                }
+            }
+        };
 
         logger.step("prCreated", &[("number", &pr_number.to_string())]);
         Ok(pr_number)
     };
 
     let result = run_send();
-    let _ = fs::remove_dir_all(&tmp_dir);
 
     match result {
         Ok(pr_number) => {
@@ -332,9 +449,15 @@ pub fn send_proposal(
     }
 }
 
-/// Accepts a proposal: downloads/extracts packages from the proposal branch,
-/// processes them with reprepro, signs them with GPG, pushes to main, closes the PR,
-/// and deletes the remote branch.
+/// Accepts a proposal: its packages are downloaded from the API, checked,
+/// added with reprepro, the indexes and the data of the software centers are
+/// made and signed, the repository is published, and the pull request is
+/// commented, closed and its branch deleted.
+///
+/// Nothing is published unless every package of the proposal was added. With
+/// `clean_first` the packages the repository had are moved aside (on the same
+/// disk, so it costs nothing) and put back if anything fails, so a refused
+/// package never leaves the repository empty.
 #[tauri::command(async)]
 pub fn accept_proposal(
     app: tauri::AppHandle,
@@ -347,123 +470,228 @@ pub fn accept_proposal(
     let repo = repos::by_name(&name)?;
     let (owner, repo_name) = parse_github_owner_repo(&repo.git_url)
         .ok_or_else(|| "The repository has no valid GitHub URL".to_string())?;
-
     let logger = JobLogger::new_step(app.clone(), "acceptTitle", &[("number", &pr_number.to_string()), ("repo", &repo.name)]);
-    logger.step("readPr", &[("number", &pr_number.to_string())]);
-
-    let pr = api_get(&format!("repos/{owner}/{repo_name}/pulls/{pr_number}"))?;
-    let branch = pr.get("head").and_then(|h| h.get("ref")).and_then(|v| v.as_str()).ok_or_else(|| {
-        "The branch of the pull request is unknown".to_string()
-    })?.to_string();
-
-    let dir = Path::new(&repo.dir);
-
-    // Fetch the proposal branch
-    logger.step("fetchBranch", &[("branch", &branch)]);
-    git_logged_ok(Some(&logger), dir, &["fetch", "origin", &branch], NETWORK_TIMEOUT)?;
-
-    // Checkout the staging/ directory directly from origin/<branch>
-    logger.step("extract", &[]);
+    let dir = Path::new(&repo.dir).to_path_buf();
     let staging_dir = dir.join("staging");
-    let _ = fs::remove_dir_all(&staging_dir);
-    fs::create_dir_all(&staging_dir).map_err(|e| e.to_string())?;
+    // Next to the repository, not inside it: publishing adds everything inside.
+    let folder = dir.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+    let aside = dir.with_file_name(format!(".{folder}-before-proposal"));
 
-    let checkout_res = git_logged(
-        Some(&logger),
-        dir,
-        &["checkout", &format!("origin/{branch}"), "--", "staging/"],
-        NETWORK_TIMEOUT,
-    )?;
-    if !checkout_res.ok {
-        logger.done(false);
-        return Err(format!("The packages of the branch {branch} could not be taken out: {}", checkout_res.error("git checkout")));
-    }
+    let work = || -> Result<(), String> {
+        logger.step("readPr", &[("number", &pr_number.to_string())]);
+        let pr = api_get(&format!("repos/{owner}/{repo_name}/pulls/{pr_number}"))?;
+        let branch = pr
+            .get("head")
+            .and_then(|h| h.get("ref"))
+            .and_then(|v| v.as_str())
+            .ok_or_else(|| "The branch of the pull request is unknown".to_string())?
+            .to_string();
+        // The commit of the proposal, also when it comes from a fork.
+        let head_sha = pr.get("head").and_then(|h| h.get("sha")).and_then(|v| v.as_str()).unwrap_or(&branch).to_string();
 
-    // Collect all .deb files from staging/
-    let mut deb_paths = Vec::new();
-    if let Ok(entries) = fs::read_dir(&staging_dir) {
-        for entry in entries.flatten() {
-            let p = entry.path();
-            if p.is_file() && p.extension().and_then(|e| e.to_str()) == Some("deb") {
-                deb_paths.push(p.to_string_lossy().to_string());
+        // Only the packages the proposal adds, from the API, every page of them.
+        logger.step("extract", &[]);
+        let _ = fs::remove_dir_all(&staging_dir);
+        fs::create_dir_all(&staging_dir).map_err(|e| e.to_string())?;
+        let mut deb_paths = Vec::new();
+        for file in api_get_all(&format!("repos/{owner}/{repo_name}/pulls/{pr_number}/files"))? {
+            let filename = file.get("filename").and_then(|v| v.as_str()).unwrap_or("");
+            if !filename.ends_with(".deb") || file.get("status").and_then(|s| s.as_str()) == Some("removed") {
+                continue;
+            }
+            let Some(short) = Path::new(filename).file_name().map(|n| n.to_string_lossy().to_string()) else { continue };
+            let dest = staging_dir.join(&short);
+            logger.step("downloadPackage", &[("file", &short)]);
+            api_download(&format!("repos/{owner}/{repo_name}/contents/{filename}?ref={head_sha}"), &dest)?;
+            deb_paths.push(dest);
+        }
+        if deb_paths.is_empty() {
+            return Err("The branch of the proposal has no .deb files".to_string());
+        }
+
+        // Each package is looked at before the repository is touched: what
+        // reprepro would refuse stops here, with the repository as it was.
+        let layout = repos::layout(&dir);
+        for path in &deb_paths {
+            let file = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+            let fields = run("dpkg-deb", &["-f", &path.to_string_lossy(), "Package", "Version", "Architecture", "Section", "Priority"], None, None, API_TIMEOUT)?;
+            let get = |k: &str| fields.stdout.lines().find_map(|l| l.strip_prefix(&format!("{k}: "))).unwrap_or("").trim().to_string();
+            if !fields.ok || get("Package").is_empty() || get("Version").is_empty() {
+                return Err(format!("{file} is not a valid Debian package"));
+            }
+            if get("Section").is_empty() || get("Priority").is_empty() {
+                return Err(format!("{file} has no Section or Priority: reprepro would skip it"));
+            }
+            let arch = get("Architecture");
+            if arch != "all" && !layout.architectures.contains(&arch) {
+                return Err(format!("{file} is for {arch}, which the repository does not have"));
             }
         }
-    }
 
-    if deb_paths.is_empty() {
+        if clean_first {
+            logger.step("preClean", &[]);
+            set_aside(&dir, &aside)?;
+            publish::wipe_packages_and_reinit(&dir)?;
+        }
+
+        logger.step("include", &[("count", &deb_paths.len().to_string())]);
+        let dir_text = dir.to_string_lossy().to_string();
+        for path in &deb_paths {
+            let path_text = path.to_string_lossy().to_string();
+            let args = ["-b", &dir_text, "--ignore=unknownfield", "--export=silent-never", "includedeb", &layout.codename, &path_text];
+            let r = run("reprepro", &args, None, None, PUSH_TIMEOUT)?;
+            if !r.ok {
+                let file = path.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+                return Err(format!("reprepro refused {file}: {}", r.error("reprepro")));
+            }
+            let package = run("dpkg-deb", &["-f", &path_text, "Package"], None, None, API_TIMEOUT).map(|r| r.stdout.trim().to_string()).unwrap_or_default();
+            if !package.is_empty() {
+                let _ = super::appstream::import_package(&dir, &path_text, &package);
+            }
+        }
         let _ = fs::remove_dir_all(&staging_dir);
-        let _ = git_logged(Some(&logger), dir, &["reset", "HEAD", "--", "staging/"], API_TIMEOUT);
-        logger.done(false);
-        return Err("The branch of the proposal has no .deb files".to_string());
-    }
 
-    // Optional pre-clean: wipe existing packages so obsolete kernel versions don't linger
-    if clean_first {
-        logger.step("preClean", &[]);
-        publish::wipe_packages_and_reinit(dir)?;
-    }
+        // The indexes, the data of the software centers and the Release, signed.
+        logger.step("signIndexes", &[]);
+        super::packages::export_with_store(&dir, &repo)?;
 
-    logger.step("include", &[("count", &deb_paths.len().to_string())]);
-    // Import into reprepro
-    let dir_text = dir.to_string_lossy().to_string();
-    let layout = repos::layout(dir);
-    for p in &deb_paths {
-        let args = ["-b", &dir_text, "--ignore=unknownfield", "--export=silent-never", "includedeb", &layout.codename, p];
-        let r = run("reprepro", &args, None, None, NETWORK_TIMEOUT)?;
-        if !r.ok {
-            logger.step("repreproWarning", &[("error", &r.error("reprepro"))]);
+        logger.step("pushMain", &[]);
+        publish::publish(Some(&logger), &repo, &format!("Accept proposal #{pr_number}: {}\n\nBranch: {branch}", repo.name))?;
+        // Published: what was set aside is no longer needed.
+        let _ = fs::remove_dir_all(&aside);
+
+        // The pull request: comment, close, branch deleted. The packages are
+        // already published, so a refusal here is reported but not undone.
+        logger.step("closePr", &[("number", &pr_number.to_string())]);
+        let mut problems = Vec::new();
+        if let Err(e) = api_post(&format!("repos/{owner}/{repo_name}/issues/{pr_number}/comments"), &serde_json::json!({ "body": comment.trim() })) {
+            problems.push(e);
+        }
+        if let Err(e) = api_patch(&format!("repos/{owner}/{repo_name}/pulls/{pr_number}"), &serde_json::json!({ "state": "closed" })) {
+            problems.push(e);
+        }
+        logger.step("deleteBranch", &[("branch", &branch)]);
+        if let Err(e) = api_delete(&format!("repos/{owner}/{repo_name}/git/refs/heads/{branch}")) {
+            problems.push(e);
+        }
+        if !problems.is_empty() {
+            return Err(format!("The packages are published, but the pull request could not be closed: {}", problems.join("; ")));
+        }
+        Ok(())
+    };
+
+    let result = work();
+    let _ = fs::remove_dir_all(&staging_dir);
+    match result {
+        Ok(()) => {
+            logger.step("accepted", &[]);
+            logger.done(true);
+            Ok(())
+        }
+        Err(e) => {
+            // Anything that fails before publishing leaves the repository as it was.
+            if aside.exists() {
+                restore_aside(&dir, &aside);
+                let _ = repos::export_signed(&dir);
+            }
+            logger.step("error", &[("error", &e)]);
+            logger.done(false);
+            Err(e)
         }
     }
+}
 
-    // Clean up temporary staging/ folder and unstage
-    let _ = fs::remove_dir_all(&staging_dir);
-    let _ = git_logged(Some(&logger), dir, &["reset", "HEAD", "--", "staging/"], API_TIMEOUT);
+/// The folders of the packages and their indexes, moved next to the
+/// repository (a rename: no copy, whatever their size).
+const PACKAGE_DIRS: [&str; 5] = ["pool", "db", "dists", "media", "appstream"];
 
-    // Export signed indexes, regenerate appstream and push to main
-    logger.step("signIndexes", &[]);
-    repos::export_signed(dir)?;
-
-    logger.step("pushMain", &[]);
-    publish::publish(Some(&logger), &repo, &format!("Accept proposal #{pr_number}: {}\n\nBranch: {branch}", repo.name))?;
-
-    // Close Pull Request on GitHub
-    logger.step("closePr", &[("number", &pr_number.to_string())]);
-    let close_body = serde_json::json!({ "state": "closed" });
-    let _ = api_patch(&format!("repos/{owner}/{repo_name}/pulls/{pr_number}"), &close_body);
-
-    // Add acceptance comment
-    let comment_body = serde_json::json!({
-        "body": comment.trim()
-    });
-    let _ = api_post(&format!("repos/{owner}/{repo_name}/issues/{pr_number}/comments"), &comment_body);
-
-    // Delete remote proposal branch
-    logger.step("deleteBranch", &[("branch", &branch)]);
-    let _ = git_logged(Some(&logger), dir, &["push", "origin", "--delete", &branch], NETWORK_TIMEOUT);
-
-    logger.step("accepted", &[]);
-    logger.done(true);
+fn set_aside(dir: &Path, aside: &Path) -> Result<(), String> {
+    let _ = fs::remove_dir_all(aside);
+    fs::create_dir_all(aside).map_err(|e| e.to_string())?;
+    for d in PACKAGE_DIRS {
+        let from = dir.join(d);
+        if from.exists() {
+            fs::rename(&from, aside.join(d)).map_err(|e| format!("{d} could not be set aside: {e}"))?;
+        }
+    }
     Ok(())
 }
 
-/// Rejects a proposal: adds a comment with the reason and closes the Pull Request on GitHub.
+fn restore_aside(dir: &Path, aside: &Path) {
+    for d in PACKAGE_DIRS {
+        let kept = aside.join(d);
+        if kept.exists() {
+            let _ = fs::remove_dir_all(dir.join(d));
+            let _ = fs::rename(&kept, dir.join(d));
+        }
+    }
+    let _ = fs::remove_dir_all(aside);
+}
+
+/// Rejects a proposal: the comment with the reason, the pull request closed
+/// and its branch deleted. Every refusal of GitHub is reported.
 #[tauri::command(async)]
 pub fn reject_proposal(name: String, pr_number: u64, comment: String) -> Result<(), String> {
     let repo = repos::by_name(&name)?;
     let (owner, repo_name) = parse_github_owner_repo(&repo.git_url)
         .ok_or_else(|| "The repository has no valid GitHub URL".to_string())?;
 
-    // Post comment
+    let pr = api_get(&format!("repos/{owner}/{repo_name}/pulls/{pr_number}"))?;
     // Written by the interface, in its language, with the reason if there is one.
-    let comment = comment.trim().to_string();
-    let _ = api_post(
-        &format!("repos/{owner}/{repo_name}/issues/{pr_number}/comments"),
-        &serde_json::json!({ "body": comment }),
-    );
+    api_post(&format!("repos/{owner}/{repo_name}/issues/{pr_number}/comments"), &serde_json::json!({ "body": comment.trim() }))?;
+    api_patch(&format!("repos/{owner}/{repo_name}/pulls/{pr_number}"), &serde_json::json!({ "state": "closed" }))?;
 
-    // Close PR
-    let close_body = serde_json::json!({ "state": "closed" });
-    let _ = api_patch(&format!("repos/{owner}/{repo_name}/pulls/{pr_number}"), &close_body)?;
-
+    // The branch of the proposal, when it is in this repository (not a fork).
+    let same_repo = pr.get("head").and_then(|h| h.get("repo")).and_then(|r| r.get("full_name")).and_then(|v| v.as_str())
+        == Some(&format!("{owner}/{repo_name}"));
+    if let (true, Some(branch)) = (same_repo, pr.get("head").and_then(|h| h.get("ref")).and_then(|v| v.as_str())) {
+        api_delete(&format!("repos/{owner}/{repo_name}/git/refs/heads/{branch}"))?;
+    }
     Ok(())
+}
+
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn a_failed_proposal_puts_the_packages_back() {
+        let base = std::env::temp_dir().join(format!("soplos-aside-{}", std::process::id()));
+        let _ = fs::remove_dir_all(&base);
+        let dir = base.join("repo");
+        let aside = base.join(".repo-before-proposal");
+        fs::create_dir_all(dir.join("pool/main/k")).unwrap();
+        fs::create_dir_all(dir.join("conf")).unwrap();
+        fs::write(dir.join("pool/main/k/kernel.deb"), "old").unwrap();
+        fs::write(dir.join("conf/distributions"), "Codename: stable").unwrap();
+
+        set_aside(&dir, &aside).unwrap();
+        assert!(!dir.join("pool").exists());
+        assert!(dir.join("conf/distributions").exists(), "the configuration stays");
+        fs::create_dir_all(dir.join("pool/main/n")).unwrap();
+        fs::write(dir.join("pool/main/n/new.deb"), "new").unwrap();
+
+        restore_aside(&dir, &aside);
+        assert_eq!(fs::read_to_string(dir.join("pool/main/k/kernel.deb")).unwrap(), "old");
+        assert!(!dir.join("pool/main/n").exists());
+        assert!(!aside.exists());
+        fs::remove_dir_all(base).unwrap();
+    }
+
+    // Talks to GitHub (only reads): run with --ignored.
+    #[test]
+    #[ignore]
+    fn a_refusal_of_github_is_an_error() {
+        let e = api_get("repos/SoplosLinux/this-repository-does-not-exist").unwrap_err();
+        assert!(e.starts_with("GitHub (404)"), "{e}");
+        assert!(api_get("repos/SoplosLinux/soplos-kernels").is_ok());
+    }
+
+    #[test]
+    fn reads_the_owner_and_the_repository() {
+        assert_eq!(parse_github_owner_repo("https://github.com/SoplosLinux/soplos-kernels.git"), Some(("SoplosLinux".into(), "soplos-kernels".into())));
+        assert_eq!(parse_github_owner_repo("git@github.com:SoplosLinux/tyron.git"), Some(("SoplosLinux".into(), "tyron".into())));
+        assert_eq!(parse_github_owner_repo("https://gitlab.com/x/y"), None);
+    }
 }
