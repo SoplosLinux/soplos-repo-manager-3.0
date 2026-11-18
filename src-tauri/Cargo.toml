@@ -1,0 +1,43 @@
+[package]
+name = "soplos-repo-manager"
+version = "3.0.0"
+description = "Soplos Repo Manager"
+authors = ["Sergi Perich <info@soploslinux.com>"]
+license = "GPL-3.0-or-later"
+edition = "2021"
+
+[lib]
+name = "soplos_repo_manager_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+# No "devtools" feature here: Tauri already enables the inspector
+# automatically on debug builds (cfg(debug_assertions)); declaring the
+# feature would force it on in release builds too.
+tauri = { version = "2", features = [] }
+tauri-plugin-shell = "2"
+# File pickers to import and export keys, as in Repo Selector.
+tauri-plugin-dialog = "2"
+tauri-plugin-single-instance = "2"
+# Reads the metainfo of the packages, for the DEP-11 file of the software centers.
+roxmltree = "0.20"
+# Scales the icons of the packages and reads the size of their screenshots;
+# Tauri already uses it on Linux.
+gdk-pixbuf = "0.18"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+uuid = { version = "1", features = ["v4"] }
+# Tokens live in the keyring of the system (Secret Service: GNOME Keyring,
+# KWallet, KeePassXC), never in a file of the program.
+keyring = { version = "3", features = ["sync-secret-service", "crypto-rust"] }
+base64 = "0.21"
+
+[profile.release]
+panic = "abort"
+codegen-units = 1
+lto = true
+opt-level = "s"
+strip = true

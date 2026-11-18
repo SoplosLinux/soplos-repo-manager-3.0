@@ -1,0 +1,200 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>org.soplos.repomanager</id>
+  <pkgname>soplos-repo-manager</pkgname>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <project_group>org.soplos</project_group>
+
+  <name>Soplos Repo Manager</name>
+
+  <summary>Build, check and publish APT repositories</summary>
+  <summary xml:lang="es">Crea, comprueba y publica repositorios APT</summary>
+  <summary xml:lang="fr">Créer, vérifier et publier des dépôts APT</summary>
+  <summary xml:lang="pt">Criar, verificar e publicar repositórios APT</summary>
+  <summary xml:lang="de">APT-Paketquellen erstellen, prüfen und veröffentlichen</summary>
+  <summary xml:lang="it">Crea, verifica e pubblica repository APT</summary>
+  <summary xml:lang="ru">Создание, проверка и публикация репозиториев APT</summary>
+  <summary xml:lang="ro">Creează, verifică și publică depozite APT</summary>
+
+  <description>
+    <p>Soplos Repo Manager keeps APT repositories, signed with GPG and published on GitHub: it builds Debian packages, checks them before they are published, adds them to one repository or to several at once, and makes the data software centers read. A team can send packages for review, and the administrator of the repository accepts or rejects them.</p>
+    <p xml:lang="es">Soplos Repo Manager mantiene repositorios APT firmados con GPG y publicados en GitHub: crea paquetes Debian, los comprueba antes de publicarlos, los añade a uno o a varios repositorios a la vez y genera los datos que leen las tiendas de software. Un equipo puede enviar paquetes a revisión, y el responsable del repositorio los acepta o los rechaza.</p>
+    <p xml:lang="fr">Soplos Repo Manager entretient des dépôts APT signés avec GPG et publiés sur GitHub : il crée des paquets Debian, les vérifie avant de les publier, les ajoute à un ou plusieurs dépôts à la fois et produit les données que lisent les logithèques. Une équipe peut envoyer des paquets pour révision, et le responsable du dépôt les accepte ou les refuse.</p>
+    <p xml:lang="de">Soplos Repo Manager pflegt APT-Paketquellen, mit GPG signiert und auf GitHub veröffentlicht: Es erstellt Debian-Pakete, prüft sie vor der Veröffentlichung, fügt sie einer oder mehreren Paketquellen gleichzeitig hinzu und erzeugt die Daten, die Softwarecenter lesen. Ein Team kann Pakete zur Prüfung senden, und der Verantwortliche der Paketquelle nimmt sie an oder lehnt sie ab.</p>
+    <p xml:lang="pt">O Soplos Repo Manager mantém repositórios APT assinados com GPG e publicados no GitHub: cria pacotes Debian, verifica-os antes de os publicar, adiciona-os a um ou a vários repositórios de uma vez e gera os dados que as lojas de software leem. Uma equipa pode enviar pacotes para revisão, e o responsável do repositório aceita-os ou rejeita-os.</p>
+    <p xml:lang="it">Soplos Repo Manager gestisce repository APT firmati con GPG e pubblicati su GitHub: crea pacchetti Debian, li verifica prima di pubblicarli, li aggiunge a uno o a più repository insieme e genera i dati che leggono i software center. Un team può inviare pacchetti in revisione, e il responsabile del repository li accetta o li rifiuta.</p>
+    <p xml:lang="ro">Soplos Repo Manager întreține depozite APT semnate cu GPG și publicate pe GitHub: creează pachete Debian, le verifică înainte de publicare, le adaugă în unul sau mai multe depozite deodată și generează datele citite de centrele de software. O echipă poate trimite pachete spre examinare, iar responsabilul depozitului le acceptă sau le respinge.</p>
+    <p xml:lang="ru">Soplos Repo Manager ведёт репозитории APT, подписанные GPG и опубликованные на GitHub: создаёт пакеты Debian, проверяет их перед публикацией, добавляет в один или сразу в несколько репозиториев и формирует данные, которые читают центры приложений. Команда может отправлять пакеты на проверку, а ответственный за репозиторий принимает или отклоняет их.</p>
+    <ul>
+      <li>Adds whole folders of packages, gone through with every folder inside, to several repositories at once</li>
+      <li xml:lang="es">Añade carpetas enteras de paquetes, recorridas con todas sus subcarpetas, a varios repositorios a la vez</li>
+      <li xml:lang="fr">Ajoute des dossiers entiers de paquets, parcourus avec tous leurs sous-dossiers, à plusieurs dépôts à la fois</li>
+      <li xml:lang="de">Fügt ganze Paketordner samt Unterordnern mehreren Paketquellen gleichzeitig hinzu</li>
+      <li xml:lang="pt">Adiciona pastas inteiras de pacotes, percorridas com todas as subpastas, a vários repositórios de uma vez</li>
+      <li xml:lang="it">Aggiunge intere cartelle di pacchetti, con tutte le sottocartelle, a più repository insieme</li>
+      <li xml:lang="ro">Adaugă dosare întregi de pachete, cu toate subdosarele, în mai multe depozite deodată</li>
+      <li xml:lang="ru">Добавляет целые папки пакетов со всеми вложенными папками сразу в несколько репозиториев</li>
+      <li>Makes the AppStream data of the repository from the packages themselves, so the program shows in software centers</li>
+      <li xml:lang="es">Genera los datos AppStream del repositorio a partir de los propios paquetes, para que los programas salgan en las tiendas</li>
+      <li xml:lang="fr">Produit les données AppStream du dépôt à partir des paquets eux-mêmes, pour que les programmes apparaissent dans les logithèques</li>
+      <li xml:lang="de">Erzeugt die AppStream-Daten der Paketquelle aus den Paketen selbst, damit die Programme in Softwarecentern erscheinen</li>
+      <li xml:lang="pt">Gera os dados AppStream do repositório a partir dos próprios pacotes, para os programas aparecerem nas lojas de software</li>
+      <li xml:lang="it">Genera i dati AppStream del repository dai pacchetti stessi, perché i programmi compaiano nei software center</li>
+      <li xml:lang="ro">Generează datele AppStream ale depozitului din pachetele înseși, ca programele să apară în centrele de software</li>
+      <li xml:lang="ru">Формирует данные AppStream репозитория из самих пакетов, чтобы программы появлялись в центрах приложений</li>
+      <li>Builds packages from a program, with its menu entry, its icon and its metainfo, and checks any package before it is published</li>
+      <li xml:lang="es">Crea paquetes a partir de un programa, con su entrada de menú, su icono y su metainfo, y comprueba cualquier paquete antes de publicarlo</li>
+      <li xml:lang="fr">Crée des paquets à partir d’un programme, avec son entrée de menu, son icône et ses métadonnées, et vérifie tout paquet avant de le publier</li>
+      <li xml:lang="de">Erstellt Pakete aus einem Programm, mit Menüeintrag, Symbol und Metainfo, und prüft jedes Paket vor der Veröffentlichung</li>
+      <li xml:lang="pt">Cria pacotes a partir de um programa, com a sua entrada de menu, o seu ícone e a sua metainfo, e verifica qualquer pacote antes de o publicar</li>
+      <li xml:lang="it">Crea pacchetti da un programma, con voce di menu, icona e metainfo, e verifica qualsiasi pacchetto prima di pubblicarlo</li>
+      <li xml:lang="ro">Creează pachete dintr-un program, cu intrarea de meniu, pictograma și metainfo, și verifică orice pachet înainte de publicare</li>
+      <li xml:lang="ru">Создаёт пакеты из программы с пунктом меню, значком и metainfo и проверяет любой пакет перед публикацией</li>
+      <li>Keeps the GPG keys that sign the repositories, and the GitHub tokens only in the keyring of the system</li>
+      <li xml:lang="es">Gestiona las claves GPG que firman los repositorios, y guarda los tokens de GitHub solo en el llavero del sistema</li>
+      <li xml:lang="fr">Gère les clés GPG qui signent les dépôts, et garde les jetons GitHub uniquement dans le trousseau du système</li>
+      <li xml:lang="de">Verwaltet die GPG-Schlüssel, die die Paketquellen signieren, und bewahrt GitHub-Token nur im Schlüsselbund des Systems auf</li>
+      <li xml:lang="pt">Gere as chaves GPG que assinam os repositórios, e guarda os tokens do GitHub apenas no porta-chaves do sistema</li>
+      <li xml:lang="it">Gestisce le chiavi GPG che firmano i repository, e conserva i token GitHub solo nel portachiavi del sistema</li>
+      <li xml:lang="ro">Gestionează cheile GPG care semnează depozitele și păstrează tokenurile GitHub doar în portcheiul sistemului</li>
+      <li xml:lang="ru">Управляет ключами GPG, которыми подписаны репозитории, и хранит токены GitHub только в связке ключей системы</li>
+    </ul>
+  </description>
+
+  <launchable type="desktop-id">soplos-repo-manager.desktop</launchable>
+  <url type="homepage">https://soplos.org</url>
+  <url type="bugtracker">https://github.com/SoplosLinux/soplos-repo-manager-3.0/issues</url>
+  <developer id="org.soplos">
+    <name>Sergi Perich</name>
+  </developer>
+  <content_rating type="oars-1.1"/>
+  <categories>
+    <category>Development</category>
+    <category>System</category>
+  </categories>
+  <provides>
+    <binary>soplos-repo-manager</binary>
+  </provides>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>The repositories, each with its signing key, its packages and where it is published</caption>
+      <caption xml:lang="es">Los repositorios, cada uno con su clave de firma, sus paquetes y dónde se publica</caption>
+      <caption xml:lang="de">Die Paketquellen, jede mit ihrem Signierschlüssel, ihren Paketen und ihrem Veröffentlichungsort</caption>
+      <caption xml:lang="fr">Les dépôts, chacun avec sa clé de signature, ses paquets et l’endroit où il est publié</caption>
+      <caption xml:lang="it">I repository, ognuno con la sua chiave di firma, i suoi pacchetti e dove è pubblicato</caption>
+      <caption xml:lang="pt">Os repositórios, cada um com a sua chave de assinatura, os seus pacotes e onde é publicado</caption>
+      <caption xml:lang="ro">Depozitele, fiecare cu cheia de semnare, pachetele și locul unde este publicat</caption>
+      <caption xml:lang="ru">Репозитории, каждый со своим ключом подписи, пакетами и местом публикации</caption>
+      <image>https://raw.githubusercontent.com/SoplosLinux/soplos-repo-manager-3.0/main/src-tauri/resources/screenshots/screenshot01.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The packages of a repository</caption>
+      <caption xml:lang="es">Los paquetes de un repositorio</caption>
+      <caption xml:lang="de">Die Pakete einer Paketquelle</caption>
+      <caption xml:lang="fr">Les paquets d’un dépôt</caption>
+      <caption xml:lang="it">I pacchetti di un repository</caption>
+      <caption xml:lang="pt">Os pacotes de um repositório</caption>
+      <caption xml:lang="ro">Pachetele unui depozit</caption>
+      <caption xml:lang="ru">Пакеты репозитория</caption>
+      <image>https://raw.githubusercontent.com/SoplosLinux/soplos-repo-manager-3.0/main/src-tauri/resources/screenshots/screenshot02.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The review before adding: what is new, what is upgraded and what is already there</caption>
+      <caption xml:lang="es">La revisión antes de añadir: lo nuevo, lo que se actualiza y lo que ya estaba</caption>
+      <caption xml:lang="de">Die Prüfung vor dem Hinzufügen: was neu ist, was aktualisiert wird und was schon da ist</caption>
+      <caption xml:lang="fr">La révision avant l’ajout : ce qui est nouveau, ce qui est mis à jour et ce qui existe déjà</caption>
+      <caption xml:lang="it">La revisione prima di aggiungere: cosa è nuovo, cosa si aggiorna e cosa c’è già</caption>
+      <caption xml:lang="pt">A revisão antes de adicionar: o que é novo, o que é atualizado e o que já existe</caption>
+      <caption xml:lang="ro">Examinarea înainte de adăugare: ce este nou, ce se actualizează și ce există deja</caption>
+      <caption xml:lang="ru">Проверка перед добавлением: что новое, что обновляется и что уже есть</caption>
+      <image>https://raw.githubusercontent.com/SoplosLinux/soplos-repo-manager-3.0/main/src-tauri/resources/screenshots/screenshot03.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Building a package from a program, with its desktop integration</caption>
+      <caption xml:lang="es">Crear un paquete a partir de un programa, con su integración en el escritorio</caption>
+      <caption xml:lang="de">Ein Paket aus einem Programm erstellen, mit Desktop-Integration</caption>
+      <caption xml:lang="fr">Créer un paquet à partir d’un programme, avec son intégration au bureau</caption>
+      <caption xml:lang="it">Creare un pacchetto da un programma, con l’integrazione nel desktop</caption>
+      <caption xml:lang="pt">Criar um pacote a partir de um programa, com a integração no ambiente de trabalho</caption>
+      <caption xml:lang="ro">Crearea unui pachet dintr-un program, cu integrarea în desktop</caption>
+      <caption xml:lang="ru">Создание пакета из программы с интеграцией в рабочий стол</caption>
+      <image>https://raw.githubusercontent.com/SoplosLinux/soplos-repo-manager-3.0/main/src-tauri/resources/screenshots/screenshot04.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Checking packages before they are published</caption>
+      <caption xml:lang="es">Comprobar paquetes antes de publicarlos</caption>
+      <caption xml:lang="de">Pakete vor der Veröffentlichung prüfen</caption>
+      <caption xml:lang="fr">Vérifier des paquets avant de les publier</caption>
+      <caption xml:lang="it">Verificare i pacchetti prima di pubblicarli</caption>
+      <caption xml:lang="pt">Verificar pacotes antes de os publicar</caption>
+      <caption xml:lang="ro">Verificarea pachetelor înainte de publicare</caption>
+      <caption xml:lang="ru">Проверка пакетов перед публикацией</caption>
+      <image>https://raw.githubusercontent.com/SoplosLinux/soplos-repo-manager-3.0/main/src-tauri/resources/screenshots/screenshot05.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The proposals the team sends, to accept or reject</caption>
+      <caption xml:lang="es">Las propuestas que envía el equipo, para aceptarlas o rechazarlas</caption>
+      <caption xml:lang="de">Die Vorschläge des Teams, zum Annehmen oder Ablehnen</caption>
+      <caption xml:lang="fr">Les propositions envoyées par l’équipe, à accepter ou à refuser</caption>
+      <caption xml:lang="it">Le proposte inviate dal team, da accettare o rifiutare</caption>
+      <caption xml:lang="pt">As propostas enviadas pela equipa, para aceitar ou rejeitar</caption>
+      <caption xml:lang="ro">Propunerile trimise de echipă, de acceptat sau de respins</caption>
+      <caption xml:lang="ru">Предложения команды, которые можно принять или отклонить</caption>
+      <image>https://raw.githubusercontent.com/SoplosLinux/soplos-repo-manager-3.0/main/src-tauri/resources/screenshots/screenshot06.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Sending packages to a repository for review</caption>
+      <caption xml:lang="es">Enviar paquetes a un repositorio para su revisión</caption>
+      <caption xml:lang="de">Pakete zur Prüfung an eine Paketquelle senden</caption>
+      <caption xml:lang="fr">Envoyer des paquets à un dépôt pour révision</caption>
+      <caption xml:lang="it">Inviare pacchetti a un repository per la revisione</caption>
+      <caption xml:lang="pt">Enviar pacotes para um repositório para revisão</caption>
+      <caption xml:lang="ro">Trimiterea pachetelor spre examinare într-un depozit</caption>
+      <caption xml:lang="ru">Отправка пакетов в репозиторий на проверку</caption>
+      <image>https://raw.githubusercontent.com/SoplosLinux/soplos-repo-manager-3.0/main/src-tauri/resources/screenshots/screenshot07.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The destinations proposals are sent to</caption>
+      <caption xml:lang="es">Los destinos a los que se envían las propuestas</caption>
+      <caption xml:lang="de">Die Ziele, an die Vorschläge gesendet werden</caption>
+      <caption xml:lang="fr">Les destinations auxquelles les propositions sont envoyées</caption>
+      <caption xml:lang="it">Le destinazioni a cui si inviano le proposte</caption>
+      <caption xml:lang="pt">Os destinos para onde as propostas são enviadas</caption>
+      <caption xml:lang="ro">Destinațiile la care sunt trimise propunerile</caption>
+      <caption xml:lang="ru">Цели, куда отправляются предложения</caption>
+      <image>https://raw.githubusercontent.com/SoplosLinux/soplos-repo-manager-3.0/main/src-tauri/resources/screenshots/screenshot08.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>The GPG keys that sign the repositories</caption>
+      <caption xml:lang="es">Las claves GPG que firman los repositorios</caption>
+      <caption xml:lang="de">Die GPG-Schlüssel, die die Paketquellen signieren</caption>
+      <caption xml:lang="fr">Les clés GPG qui signent les dépôts</caption>
+      <caption xml:lang="it">Le chiavi GPG che firmano i repository</caption>
+      <caption xml:lang="pt">As chaves GPG que assinam os repositórios</caption>
+      <caption xml:lang="ro">Cheile GPG care semnează depozitele</caption>
+      <caption xml:lang="ru">Ключи GPG, которыми подписаны репозитории</caption>
+      <image>https://raw.githubusercontent.com/SoplosLinux/soplos-repo-manager-3.0/main/src-tauri/resources/screenshots/screenshot09.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Emptying a repository, or resetting its history</caption>
+      <caption xml:lang="es">Vaciar un repositorio o reiniciar su historial</caption>
+      <caption xml:lang="de">Eine Paketquelle leeren oder ihren Verlauf zurücksetzen</caption>
+      <caption xml:lang="fr">Vider un dépôt ou réinitialiser son historique</caption>
+      <caption xml:lang="it">Svuotare un repository o azzerarne la cronologia</caption>
+      <caption xml:lang="pt">Esvaziar um repositório ou reiniciar o seu histórico</caption>
+      <caption xml:lang="ro">Golirea unui depozit sau resetarea istoricului său</caption>
+      <caption xml:lang="ru">Очистка репозитория или сброс его истории</caption>
+      <image>https://raw.githubusercontent.com/SoplosLinux/soplos-repo-manager-3.0/main/src-tauri/resources/screenshots/screenshot10.png</image>
+    </screenshot>
+  </screenshots>
+
+  <releases>
+    <release version="3.0.0" date="2026-11-18">
+      <description>
+        <p>First version of the rewrite, which joins Soplos Repo Manager and Soplos Packager in one program. Repositories signed with GPG and published on GitHub one change at a time, packages added from whole folders to several repositories at once, AppStream data made from the packages, Build and Check pages, proposals from a team, and GitHub tokens kept only in the keyring of the system.</p>
+      </description>
+    </release>
+  </releases>
+</component>

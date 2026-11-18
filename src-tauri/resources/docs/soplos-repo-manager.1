@@ -1,0 +1,106 @@
+.TH "SOPLOS-REPO-MANAGER" "1" "2026-11-18" "Soplos Linux" "User Commands"
+.SH NAME
+soplos-repo-manager \- build, check and publish APT repositories
+.SH SYNOPSIS
+.B soplos-repo-manager
+.SH DESCRIPTION
+.B soplos-repo-manager
+keeps APT repositories made with
+.BR reprepro (1),
+signed with GPG and published on GitHub, from a graphical interface. Built
+with Tauri 2, Rust and Svelte, it joins two programs of the 2.x family, Soplos
+Repo Manager and Soplos Packager, and is meant for any APT repository. Its
+pages are in five groups:
+.IP \[bu] 2
+.B Repository:
+the repositories (made in an empty folder, with their signing key, title and
+Git address) and their packages. Packages are added from files or whole
+folders, gone through with every folder inside, to one repository or to
+several at once, after a review that says what is new, what is upgraded and
+what is already there. The indexes are signed once, the AppStream data that
+software centers read is made from the packages themselves, and the change is
+published as one commit.
+.IP \[bu]
+.B Build:
+a Debian package made from one program (installed in /usr/bin), from a program
+in a folder (installed in /opt with a launcher in /usr/bin) or from a folder
+laid out as the system, with its menu entry, its icon and its AppStream
+metainfo; and the check of any package before it is published: what
+.BR reprepro (1)
+and GitHub would refuse, and what software centers need to show it.
+.BR lintian (1)
+runs only when it is asked for.
+.IP \[bu]
+.B Team:
+the proposals a team sends to a repository as pull requests, accepted (the
+packages are added, signed and published) or rejected with a reason, and the
+page to send packages for review.
+.IP \[bu]
+.B Publish:
+the destinations proposals are sent to, and the GitHub accounts.
+.IP \[bu]
+.B Tools:
+the GPG keys that sign the repositories (made, imported, exported and backed
+up) and the cleanup of a repository: emptying its packages, or also resetting
+its Git history to a single commit.
+.P
+Long jobs (publishing, sending, accepting, checking) show their progress and
+the output of git, reprepro and gpg in a bar at the bottom of the window, and
+can be cancelled.
+.P
+GitHub tokens are kept only in the keyring of the system, through the Secret
+Service (GNOME Keyring, KWallet, KeePassXC). A token never goes on a command
+line, into a URL or into the configuration of a Git repository: git gets it
+through its environment and curl through its standard input.
+.P
+The interface is available in English, Spanish, German, French, Italian,
+Portuguese, Romanian and Russian. It starts in the system language and falls
+back to English. The light or dark theme of the window follows the one of the
+desktop.
+.SH KEYBOARD SHORTCUTS
+.TP
+.B F1
+About dialog.
+.TP
+.B Ctrl+1 \fRto\fB Ctrl+9
+The first nine pages.
+.TP
+.B Ctrl+Tab
+Next page.
+.TP
+.B Ctrl+Shift+Tab
+Previous page.
+.TP
+.B Ctrl+Q
+Quit the application.
+.SH FILES
+.TP
+.I ~/.config/org.soplos.repomanager/repos.json
+The repositories the program knows and the one in use. On the first start it
+is made from the profiles of the 2.x version.
+.TP
+.I ~/.config/org.soplos.repomanager/credentials.json
+The list of GitHub accounts and the one in use. The tokens are not in it: they
+are in the keyring of the system.
+.TP
+.I ~/.config/org.soplos.repomanager/maintainer.json
+The maintainer of the last package built, offered for the next one.
+.TP
+.I ~/.cache/org.soplos.repomanager/
+Temporary folders used while a package is built or checked; removed when it ends.
+.SH AUTHOR
+Written by Sergi Perich <info@soploslinux.com> for the Soplos Linux project.
+.SH COPYRIGHT
+Copyright \(co 2026 Sergi Perich <info@soploslinux.com>.
+.br
+License: GPL-3.0-or-later <https://www.gnu.org/licenses/gpl-3.0.html>.
+.br
+This is free software: you are free to change and redistribute it.
+There is NO WARRANTY, to the extent permitted by law.
+.SH SEE ALSO
+.BR reprepro (1),
+.BR dpkg-deb (1),
+.BR gpg (1),
+.BR git (1),
+.BR lintian (1),
+.BR appstreamcli (1)

@@ -1,0 +1,79 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "soplos-repo-manager",
+  "version": "3.0.0",
+  "identifier": "org.soplos.repomanager",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "devUrl": "http://localhost:1434",
+    "frontendDist": "../dist"
+  },
+  "app": {
+    "windows": [
+      {
+        "title": "Soplos Repo Manager",
+        "width": 1000,
+        "height": 700,
+        "minWidth": 860,
+        "minHeight": 560,
+        "resizable": true,
+        "decorations": false,
+        "transparent": true
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "bundle": {
+    "active": true,
+    "targets": [
+      "deb"
+    ],
+    "publisher": "Sergi Perich",
+    "homepage": "https://soplos.org",
+    "copyright": "Copyright © 2026 Sergi Perich",
+    "license": "GPL-3.0-or-later",
+    "licenseFile": "../LICENSE",
+    "category": "DeveloperTool",
+    "shortDescription": "Build, check and publish APT repositories",
+    "longDescription": "Soplos Repo Manager builds Debian packages, checks them and publishes them in APT repositories, signed with GPG, on Git platforms, hostings and servers. A team can send packages for review and the administrator of the repository accepts them.",
+    "icon": [
+      "icons/32x32.png",
+      "icons/128x128.png",
+      "icons/128x128@2x.png",
+      "icons/icon.png"
+    ],
+    "linux": {
+      "deb": {
+        "section": "devel",
+        "priority": "optional",
+        "depends": [
+          "dpkg-dev",
+          "gnupg",
+          "git",
+          "reprepro",
+          "curl"
+        ],
+        "changelog": "../CHANGELOG.md",
+        "desktopTemplate": "resources/debian/soplos-repo-manager.desktop.hbs",
+        "files": {
+          "/usr/share/doc/soplos-repo-manager/copyright": "resources/debian/copyright",
+          "/usr/share/metainfo/org.soplos.repomanager.metainfo.xml": "resources/appstream/org.soplos.repomanager.metainfo.xml",
+          "/usr/share/man/man1/soplos-repo-manager.1.gz": "resources/docs/soplos-repo-manager.1.gz",
+          "/usr/share/doc/soplos-repo-manager/screenshots/screenshot01.png": "resources/screenshots/screenshot01.png",
+          "/usr/share/doc/soplos-repo-manager/screenshots/screenshot02.png": "resources/screenshots/screenshot02.png",
+          "/usr/share/doc/soplos-repo-manager/screenshots/screenshot03.png": "resources/screenshots/screenshot03.png",
+          "/usr/share/doc/soplos-repo-manager/screenshots/screenshot04.png": "resources/screenshots/screenshot04.png",
+          "/usr/share/doc/soplos-repo-manager/screenshots/screenshot05.png": "resources/screenshots/screenshot05.png",
+          "/usr/share/doc/soplos-repo-manager/screenshots/screenshot06.png": "resources/screenshots/screenshot06.png",
+          "/usr/share/doc/soplos-repo-manager/screenshots/screenshot07.png": "resources/screenshots/screenshot07.png",
+          "/usr/share/doc/soplos-repo-manager/screenshots/screenshot08.png": "resources/screenshots/screenshot08.png",
+          "/usr/share/doc/soplos-repo-manager/screenshots/screenshot09.png": "resources/screenshots/screenshot09.png",
+          "/usr/share/doc/soplos-repo-manager/screenshots/screenshot10.png": "resources/screenshots/screenshot10.png"
+        }
+      }
+    }
+  }
+}
