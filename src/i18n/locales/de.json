@@ -69,9 +69,11 @@
     "close": "Schließen",
     "cancel": "Abbrechen",
     "ok": "OK",
+    "save": "Speichern",
     "error": "Etwas ist schiefgegangen",
     "expand": "Details anzeigen",
-    "collapse": "Details ausblenden"
+    "collapse": "Details ausblenden",
+    "loading": "Wird geladen"
   },
   "about": {
     "version": "Version {version}",
@@ -181,7 +183,8 @@
     "bashScriptTitle": "Automatisches Installationsskript",
     "bashScriptHint": "Führen Sie dieses Skript mit Bash auf jedem Debian/Ubuntu-System aus, um den GPG-Schlüssel zu installieren und das Repository zu aktivieren.",
     "copy": "Kopieren",
-    "copied": "Kopiert"
+    "copied": "Kopiert",
+    "copySources": "Adresse kopieren"
   },
   "packages": {
     "search": "Pakete suchen",
@@ -540,6 +543,7 @@
     "fieldName": "Beschreibender Name",
     "fieldUrl": "Git-URL (HTTPS oder SSH)",
     "fieldBranch": "Veröffentlichungs-Branch",
-    "fieldDesc": "Beschreibung (optional)"
+    "fieldDesc": "Beschreibung (optional)",
+    "descPlaceholder": "Optionale Beschreibung"
   }
 }

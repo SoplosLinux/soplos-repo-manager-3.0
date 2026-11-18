@@ -1,5 +1,5 @@
 <script lang="ts">
-  import { onMount, onDestroy, getContext } from "svelte";
+  import { onMount, onDestroy, getContext, afterUpdate } from "svelte";
   import { _ } from "svelte-i18n";
   import { getCurrentWebview } from "@tauri-apps/api/webview";
   import {
@@ -180,6 +180,57 @@
     "w-full bg-surface-2 border border-border rounded px-3 py-2 text-[0.85rem] text-text-bright outline-none focus-visible:ring-2 focus-visible:ring-primary/60";
   const button =
     "flex items-center gap-1.5 px-3 py-2 rounded border border-border text-text hover:bg-surface-2 text-[0.8rem] disabled:opacity-40 cursor-pointer transition-colors whitespace-nowrap shrink-0";
+
+  // One row as soon as the shortened destination and the buttons fit; the
+  // widths are measured, so the text of the language in use decides.
+  const BAR_GAP = 8;
+  const BAR_PADDING = 56;
+  const BAR_SELECT_WIDTH = 160;
+  let barEl: HTMLDivElement;
+  let mainEl: HTMLButtonElement;
+  let addEl: HTMLButtonElement;
+  let add2El: HTMLButtonElement;
+  let resetEl: HTMLButtonElement | null = null;
+  let barWidth = 0;
+  let wMain = 0;
+  let wAdd = 0;
+  let wAdd2 = 0;
+  let wReset = 0;
+
+  $: resetVisible = !busy && (paths.length > 0 || !!title.trim() || !!description.trim());
+  $: barNeeded =
+    BAR_SELECT_WIDTH + wMain + wAdd + wAdd2 + (resetVisible ? wReset : 0) + BAR_GAP * (3 + (resetVisible ? 1 : 0));
+  $: wide = barWidth > 0 && barWidth - BAR_PADDING >= barNeeded;
+
+  // The bar asks for its own width and the natural width of every button, not
+  // the one a stretched cell gives them.
+  function measureBar() {
+    if (!barEl) return;
+    barWidth = barEl.clientWidth;
+    barEl.classList.add("bar-measure");
+    const width = (el: HTMLElement | null | undefined) => (el ? Math.ceil(el.getBoundingClientRect().width) : 0);
+    wMain = width(mainEl);
+    wAdd = width(addEl);
+    wAdd2 = width(add2El);
+    wReset = width(resetEl);
+    barEl.classList.remove("bar-measure");
+  }
+
+  afterUpdate(measureBar);
+
+  onMount(() => {
+    const onResize = () => measureBar();
+    window.addEventListener("resize", onResize);
+    let observer: ResizeObserver | undefined;
+    if (typeof ResizeObserver !== "undefined" && barEl) {
+      observer = new ResizeObserver(() => measureBar());
+      observer.observe(barEl);
+    }
+    return () => {
+      window.removeEventListener("resize", onResize);
+      observer?.disconnect();
+    };
+  });
 </script>
 
 <div class="relative flex flex-col gap-5">
@@ -215,52 +266,129 @@
     </div>
   {/if}
 
-  <!-- Sticky toolbar -->
-  <div class="sticky top-0 z-10 bg-dark pb-3 pt-1 -mx-7 px-7 border-b border-border flex items-center justify-between gap-2.5">
-    <div class="min-w-[170px] max-w-[220px] flex-1">
+  <!-- Sticky toolbar: one row while the shortened destination and the buttons
+       fit; two cells side by side when they do not. -->
+  <div
+    class="send-bar sticky top-0 z-10 bg-dark pb-3 pt-1 -mx-7 px-7 border-b border-border"
+    class:send-bar--wide={wide}
+    bind:this={barEl}
+  >
+    <div class="bar-select">
       <Select bind:value={selectedTarget} label={$_("send.selectTarget")} options={targetOptions} />
     </div>
 
-    <div class="flex items-center gap-1.5 shrink-0">
-      <button class={button} disabled={busy} on:click={chooseFiles}>
-        <FilePlus size={14} />
-        <span>{$_("packages.addFiles")}</span>
+    {#if busy}
+      <button
+        class="bar-main flex items-center gap-1 px-3 py-2 rounded bg-danger hover:bg-danger/85 text-text-bright text-[0.8rem] font-semibold cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0"
+        bind:this={mainEl}
+        on:click={cancelJob}
+      >
+        <X size={14} />
+        <span>{$_("common.cancel")}</span>
       </button>
-      <button class={button} disabled={busy} on:click={chooseFolder}>
-        <FolderPlus size={14} />
-        <span>{$_("packages.addFolder")}</span>
+    {:else}
+      <button
+        class="bar-main flex items-center gap-1.5 px-3.5 py-2 rounded bg-primary hover:bg-primary-hover text-text-bright text-[0.8rem] font-semibold disabled:opacity-40 cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0"
+        bind:this={mainEl}
+        disabled={!canSend}
+        on:click={handleSend}
+      >
+        <Send size={14} />
+        <span>{$_("send.submit")}</span>
       </button>
+    {/if}
 
-      {#if busy}
-        <button
-          class="flex items-center gap-1 px-3 py-2 rounded bg-danger hover:bg-danger/85 text-text-bright text-[0.8rem] font-semibold cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0"
-          on:click={cancelJob}
-        >
-          <X size={14} />
-          <span>{$_("common.cancel")}</span>
-        </button>
-      {:else}
-        {#if paths.length > 0 || title.trim() || description.trim()}
-          <button
-            class="flex items-center gap-1 px-2.5 py-2 rounded border border-border bg-surface-2 hover:bg-surface-3 text-text-muted hover:text-text-bright text-[0.8rem] cursor-pointer transition-colors whitespace-nowrap shrink-0"
-            title={$_("common.cancel")}
-            on:click={resetForm}
-          >
-            <X size={14} />
-            <span class="hidden md:inline">{$_("common.cancel")}</span>
-          </button>
-        {/if}
-        <button
-          class="flex items-center gap-1.5 px-3.5 py-2 rounded bg-primary hover:bg-primary-hover text-text-bright text-[0.8rem] font-semibold disabled:opacity-40 cursor-pointer transition-colors shadow-sm whitespace-nowrap shrink-0"
-          disabled={!canSend}
-          on:click={handleSend}
-        >
-          <Send size={14} />
-          <span>{$_("send.submit")}</span>
-        </button>
-      {/if}
-    </div>
+    <button class="bar-add {button}" bind:this={addEl} disabled={busy} on:click={chooseFiles}>
+      <FilePlus size={14} />
+      <span>{$_("packages.addFiles")}</span>
+    </button>
+    <button class="bar-add2 {button}" bind:this={add2El} disabled={busy} on:click={chooseFolder}>
+      <FolderPlus size={14} />
+      <span>{$_("packages.addFolder")}</span>
+    </button>
+
+    {#if resetVisible}
+      <button
+        class="bar-reset flex items-center gap-1 px-2.5 py-2 rounded border border-border bg-surface-2 hover:bg-surface-3 text-text-muted hover:text-text-bright text-[0.8rem] cursor-pointer transition-colors whitespace-nowrap shrink-0"
+        bind:this={resetEl}
+        title={$_("common.cancel")}
+        on:click={resetForm}
+      >
+        <X size={14} />
+        <span class="hidden md:inline">{$_("common.cancel")}</span>
+      </button>
+    {/if}
   </div>
+
+<style>
+  /* Two equal cells that fill the width: the controls grow to leave no empty
+     space. The bar drops to one row as soon as the measured widths fit. */
+  .send-bar {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .bar-select {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .bar-main,
+  .bar-add,
+  .bar-add2,
+  .bar-reset {
+    justify-content: center;
+  }
+
+  .bar-reset {
+    grid-column: 1 / -1;
+  }
+
+  /* While the widths are measured, every control takes its natural size. */
+  .send-bar.bar-measure > * {
+    width: max-content !important;
+  }
+
+  /* One row while the measured widths fit; there the destination is short on
+     purpose, so a long target name is cut, not the row. */
+  .send-bar--wide {
+    display: flex;
+    flex-wrap: nowrap;
+    justify-content: flex-start;
+  }
+
+  .send-bar--wide .bar-select {
+    order: 1;
+    flex: 0 0 160px;
+    width: 160px;
+  }
+
+  .send-bar--wide .bar-main,
+  .send-bar--wide .bar-add,
+  .send-bar--wide .bar-add2,
+  .send-bar--wide .bar-reset {
+    justify-content: flex-start;
+  }
+
+  .send-bar--wide .bar-add {
+    order: 2;
+  }
+
+  .send-bar--wide .bar-add2 {
+    order: 3;
+  }
+
+  .send-bar--wide .bar-reset {
+    order: 4;
+    grid-column: auto;
+  }
+
+  .send-bar--wide .bar-main {
+    order: 5;
+  }
+</style>
 
   {#if notice}
     <div class="flex items-center gap-2 px-4 py-3 rounded-lg bg-success/10 border border-success/30 text-success text-[0.82rem]">

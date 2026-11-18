@@ -273,7 +273,7 @@
           <input
             id="target-desc"
             class="w-full bg-surface-2 border border-border rounded px-3 py-1.5 text-[0.82rem] text-text-bright outline-none focus-visible:ring-2 focus-visible:ring-primary/60"
-            placeholder="Descripción opcional"
+            placeholder={$_("targets.descPlaceholder")}
             bind:value={targetDesc}
           />
         </div>

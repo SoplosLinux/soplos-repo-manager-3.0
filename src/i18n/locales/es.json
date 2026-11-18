@@ -69,9 +69,11 @@
     "close": "Cerrar",
     "cancel": "Cancelar",
     "ok": "Aceptar",
+    "save": "Guardar",
     "error": "Algo ha fallado",
     "expand": "Ver detalles",
-    "collapse": "Ocultar detalles"
+    "collapse": "Ocultar detalles",
+    "loading": "Cargando"
   },
   "about": {
     "version": "Versión {version}",
@@ -181,7 +183,8 @@
     "bashScriptTitle": "Script de instalación automática",
     "bashScriptHint": "Ejecuta este script con bash en cualquier sistema Debian/Ubuntu para instalar la clave GPG y habilitar el repositorio.",
     "copy": "Copiar",
-    "copied": "Copiado"
+    "copied": "Copiado",
+    "copySources": "Copiar la dirección"
   },
   "packages": {
     "search": "Buscar paquetes",
@@ -540,6 +543,7 @@
     "fieldName": "Nombre descriptivo",
     "fieldUrl": "URL Git (HTTPS o SSH)",
     "fieldBranch": "Rama de publicación",
-    "fieldDesc": "Descripción (opcional)"
+    "fieldDesc": "Descripción (opcional)",
+    "descPlaceholder": "Descripción opcional"
   }
 }

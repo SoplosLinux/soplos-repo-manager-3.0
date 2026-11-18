@@ -69,9 +69,11 @@
     "close": "Fermer",
     "cancel": "Annuler",
     "ok": "OK",
+    "save": "Enregistrer",
     "error": "Une erreur s'est produite",
     "expand": "Afficher les détails",
-    "collapse": "Masquer les détails"
+    "collapse": "Masquer les détails",
+    "loading": "Chargement"
   },
   "about": {
     "version": "Version {version}",
@@ -181,7 +183,8 @@
     "bashScriptTitle": "Script d'installation automatique",
     "bashScriptHint": "Exécutez ce script avec bash sur n'importe quel système Debian/Ubuntu pour installer la clé GPG et activer le dépôt.",
     "copy": "Copier",
-    "copied": "Copié"
+    "copied": "Copié",
+    "copySources": "Copier l'adresse"
   },
   "packages": {
     "search": "Rechercher des paquets",
@@ -540,6 +543,7 @@
     "fieldName": "Nom descriptif",
     "fieldUrl": "URL Git (HTTPS ou SSH)",
     "fieldBranch": "Branche de publication",
-    "fieldDesc": "Description (optionnel)"
+    "fieldDesc": "Description (optionnel)",
+    "descPlaceholder": "Description facultative"
   }
 }

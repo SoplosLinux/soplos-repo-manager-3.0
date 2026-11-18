@@ -14,7 +14,9 @@ use std::path::Path;
 use std::time::Duration;
 
 const API_TIMEOUT: Duration = Duration::from_secs(30);
-const PUSH_TIMEOUT: Duration = Duration::from_secs(600);
+// Downloading or uploading a repository of kernels can take long: a shallow
+// fetch of the base branch is still a whole copy of its current files.
+const NETWORK_TIMEOUT: Duration = Duration::from_secs(3600);
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -264,10 +266,10 @@ pub fn send_proposal(
         git_logged_ok(Some(&logger), &tmp_dir, &["remote", "add", "origin", &clean], API_TIMEOUT)?;
 
         logger.step("fetchBase", &[("branch", &base_branch)]);
-        git_logged_ok(Some(&logger), &tmp_dir, &["fetch", "--depth", "1", "origin", &base_branch], API_TIMEOUT)?;
+        git_logged_ok(Some(&logger), &tmp_dir, &["fetch", "--depth", "1", "origin", &base_branch], NETWORK_TIMEOUT)?;
 
         logger.step("createBranch", &[("branch", &proposal_branch)]);
-        git_logged_ok(Some(&logger), &tmp_dir, &["checkout", "-b", &proposal_branch, &format!("origin/{base_branch}")], API_TIMEOUT)?;
+        git_logged_ok(Some(&logger), &tmp_dir, &["checkout", "-b", &proposal_branch, &format!("origin/{base_branch}")], NETWORK_TIMEOUT)?;
 
         // Copy packages into a staging/ folder on the branch
         let staging_dir = tmp_dir.join("staging");
@@ -284,7 +286,7 @@ pub fn send_proposal(
 
         // Git add, commit, push
         logger.step("commitProposal", &[]);
-        git_logged_ok(Some(&logger), &tmp_dir, &["add", "-f", "staging/"], PUSH_TIMEOUT)?;
+        git_logged_ok(Some(&logger), &tmp_dir, &["add", "-f", "staging/"], NETWORK_TIMEOUT)?;
         git_logged_ok(
             Some(&logger),
             &tmp_dir,
@@ -293,7 +295,7 @@ pub fn send_proposal(
         )?;
 
         logger.step("pushBranch", &[("branch", &proposal_branch)]);
-        git_logged_ok(Some(&logger), &tmp_dir, &["push", "-u", "origin", &proposal_branch], PUSH_TIMEOUT)?;
+        git_logged_ok(Some(&logger), &tmp_dir, &["push", "-u", "origin", &proposal_branch], NETWORK_TIMEOUT)?;
 
         // Call GitHub API to create Pull Request
         logger.step("openPr", &[]);
@@ -358,7 +360,7 @@ pub fn accept_proposal(
 
     // Fetch the proposal branch
     logger.step("fetchBranch", &[("branch", &branch)]);
-    git_logged_ok(Some(&logger), dir, &["fetch", "origin", &branch], API_TIMEOUT)?;
+    git_logged_ok(Some(&logger), dir, &["fetch", "origin", &branch], NETWORK_TIMEOUT)?;
 
     // Checkout the staging/ directory directly from origin/<branch>
     logger.step("extract", &[]);
@@ -370,7 +372,7 @@ pub fn accept_proposal(
         Some(&logger),
         dir,
         &["checkout", &format!("origin/{branch}"), "--", "staging/"],
-        PUSH_TIMEOUT,
+        NETWORK_TIMEOUT,
     )?;
     if !checkout_res.ok {
         logger.done(false);
@@ -407,7 +409,7 @@ pub fn accept_proposal(
     let layout = repos::layout(dir);
     for p in &deb_paths {
         let args = ["-b", &dir_text, "--ignore=unknownfield", "--export=silent-never", "includedeb", &layout.codename, p];
-        let r = run("reprepro", &args, None, None, PUSH_TIMEOUT)?;
+        let r = run("reprepro", &args, None, None, NETWORK_TIMEOUT)?;
         if !r.ok {
             logger.step("repreproWarning", &[("error", &r.error("reprepro"))]);
         }
@@ -437,7 +439,7 @@ pub fn accept_proposal(
 
     // Delete remote proposal branch
     logger.step("deleteBranch", &[("branch", &branch)]);
-    let _ = git_logged(Some(&logger), dir, &["push", "origin", "--delete", &branch], API_TIMEOUT);
+    let _ = git_logged(Some(&logger), dir, &["push", "origin", "--delete", &branch], NETWORK_TIMEOUT);
 
     logger.step("accepted", &[]);
     logger.done(true);

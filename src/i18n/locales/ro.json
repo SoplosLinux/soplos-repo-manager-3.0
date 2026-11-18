@@ -69,9 +69,11 @@
     "close": "Închide",
     "cancel": "Anulează",
     "ok": "OK",
+    "save": "Salvează",
     "error": "Ceva nu a mers bine",
     "expand": "Afișează detalii",
-    "collapse": "Ascunde detalii"
+    "collapse": "Ascunde detalii",
+    "loading": "Se încarcă"
   },
   "about": {
     "version": "Versiunea {version}",
@@ -181,7 +183,8 @@
     "bashScriptTitle": "Script de instalare automată",
     "bashScriptHint": "Rulați acest script cu bash pe orice sistem Debian/Ubuntu pentru a instala cheia GPG și a activa depozitul.",
     "copy": "Copiere",
-    "copied": "Copiat"
+    "copied": "Copiat",
+    "copySources": "Copiază adresa"
   },
   "packages": {
     "search": "Caută pachete",
@@ -540,6 +543,7 @@
     "fieldName": "Nume descriptiv",
     "fieldUrl": "URL Git (HTTPS sau SSH)",
     "fieldBranch": "Ramură de publicare",
-    "fieldDesc": "Descriere (opțional)"
+    "fieldDesc": "Descriere (opțional)",
+    "descPlaceholder": "Descriere opțională"
   }
 }
