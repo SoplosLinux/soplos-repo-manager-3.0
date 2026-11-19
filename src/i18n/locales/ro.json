@@ -487,7 +487,7 @@
     "confirmAccept": "Acceptă și publică",
     "acceptExplanation": "{count} pachete vor fi importate în {repo}, semnate cu GPG și publicate în main.",
     "cleanFirstLabel": "Golește pachetele existente înainte de import (Curățare)",
-    "cleanFirstHint": "Util când compilările noi nu le înlocuiesc pe cele vechi prin versiune: golește pool-ul înainte de a le adăuga pe cele noi, ca să nu rămână fișiere învechite."
+    "cleanFirstHint": "Atenție: șterge TOATE pachetele din depozit, nu doar pe cele din această propunere, și le păstrează doar pe cele aduse. Bifează doar pentru a reface întregul depozit."
   },
   "accounts": {
     "noKeyringTitle": "Nu există un portchei în această sesiune",

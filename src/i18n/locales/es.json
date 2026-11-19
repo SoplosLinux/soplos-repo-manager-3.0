@@ -487,7 +487,7 @@
     "confirmAccept": "Aceptar y publicar",
     "acceptExplanation": "Se incorporarán {count} paquetes al repositorio {repo}, se firmarán con la clave GPG y se publicarán en main.",
     "cleanFirstLabel": "Vaciar paquetes existentes antes de importar (Limpieza)",
-    "cleanFirstHint": "Útil cuando las compilaciones nuevas no sustituyen a las antiguas por versión: vacía el pool antes de añadir las nuevas para no acumular archivos obsoletos."
+    "cleanFirstHint": "Cuidado: borra TODOS los paquetes del repositorio, no solo los de esta propuesta, y deja únicamente los que trae. Márcalo solo si quieres rehacer el repositorio entero."
   },
   "accounts": {
     "noKeyringTitle": "No hay llavero en esta sesión",

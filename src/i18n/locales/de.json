@@ -487,7 +487,7 @@
     "confirmAccept": "Akzeptieren & veröffentlichen",
     "acceptExplanation": "{count} Pakete werden in {repo} importiert, mit GPG signiert und in main veröffentlicht.",
     "cleanFirstLabel": "Bestehende Pakete vor dem Import leeren (Bereinigung)",
-    "cleanFirstHint": "Nützlich, wenn neue Builds die alten nicht über die Version ersetzen: Leert den Pool vor dem Hinzufügen der neuen, damit keine veralteten Reste bleiben."
+    "cleanFirstHint": "Vorsicht: Entfernt ALLE Pakete des Repositorys, nicht nur die dieses Vorschlags, und behält nur die mitgebrachten. Nur ankreuzen, um das ganze Repository neu aufzubauen."
   },
   "accounts": {
     "noKeyringTitle": "In dieser Sitzung gibt es keinen Schlüsselbund",

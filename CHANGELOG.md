@@ -24,6 +24,7 @@ First stable release.
 
 ### Fixed
 
+- Accepting a proposal emptied the repository: the "clean first" box came ticked and removed every package before adding the ones of the proposal, so a pull request with new kernels left the repository with those kernels alone. Accepting now only adds: the packages of the proposal go in next to the ones the repository has, and a newer version replaces only the older one of the same package. The box is gone.
 - A proposal could not be sent to a large repository: the base branch was downloaded whole before anything else — with git, even a clone without files made Git ask for every missing object when writing the tree — so the job never reached the pull request and no error explained why.
 - The pull request is created with the owner in its head (`owner:branch`), so a collaborator account can open it; when the branch already has one, its number is returned instead of failing.
 - A refused pull request now shows the reason GitHub gives, with the detail of a validation failure, instead of a generic message.

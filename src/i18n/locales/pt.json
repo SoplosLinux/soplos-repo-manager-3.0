@@ -487,7 +487,7 @@
     "confirmAccept": "Aceitar e publicar",
     "acceptExplanation": "{count} pacotes serão importados para {repo}, assinados com GPG e publicados em main.",
     "cleanFirstLabel": "Esvaziar pacotes existentes antes de importar (Limpeza)",
-    "cleanFirstHint": "Útil quando as compilações novas não substituem as antigas por versão: esvazia o pool antes de adicionar as novas, para não acumular ficheiros obsoletos."
+    "cleanFirstHint": "Cuidado: remove TODOS os pacotes do repositório, não só os desta proposta, e deixa apenas os que ela traz. Marque só para refazer o repositório inteiro."
   },
   "accounts": {
     "noKeyringTitle": "Não há porta-chaves nesta sessão",

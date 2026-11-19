@@ -36,7 +36,6 @@
 
   // Accept modal state
   let acceptTarget: Proposal | null = null;
-  let cleanFirst = true;
 
   // Reject modal state
   let rejectTarget: Proposal | null = null;
@@ -70,7 +69,6 @@
 
   function openAccept(pr: Proposal) {
     acceptTarget = pr;
-    cleanFirst = true;
   }
 
   async function confirmAccept() {
@@ -86,7 +84,6 @@
       await api.invoke("accept_proposal", {
         name: selectedRepo,
         prNumber: pr.number,
-        cleanFirst,
         comment: $_("proposals.acceptComment", { values: { repo: selectedRepo } }),
       });
       notice = $_("proposals.acceptedNotice", { values: { number: pr.number } });
@@ -281,22 +278,6 @@
       <p class="text-[0.8rem] text-text-muted">
         {$_("proposals.acceptExplanation", { values: { count: acceptTarget.files.length, repo: selectedRepo } })}
       </p>
-
-      <label class="flex items-start gap-2.5 p-3 rounded bg-surface-2 border border-border cursor-pointer select-none">
-        <input
-          type="checkbox"
-          class="mt-0.5 accent-primary cursor-pointer"
-          bind:checked={cleanFirst}
-        />
-        <div class="flex flex-col gap-0.5">
-          <span class="text-[0.82rem] font-semibold text-text-bright">
-            {$_("proposals.cleanFirstLabel")}
-          </span>
-          <span class="text-[0.74rem] text-text-muted leading-relaxed">
-            {$_("proposals.cleanFirstHint")}
-          </span>
-        </div>
-      </label>
     </div>
   </Modal>
 {/if}

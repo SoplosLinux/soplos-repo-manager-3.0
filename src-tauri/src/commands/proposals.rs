@@ -547,16 +547,15 @@ pub fn send_proposal(
 /// made and signed, the repository is published, and the pull request is
 /// commented, closed and its branch deleted.
 ///
-/// Nothing is published unless every package of the proposal was added. With
-/// `clean_first` the packages the repository had are moved aside (on the same
-/// disk, so it costs nothing) and put back if anything fails, so a refused
-/// package never leaves the repository empty.
+/// Nothing is published unless every package of the proposal was added. The
+/// proposal only adds: its packages go in next to the ones the repository
+/// already has, and a newer version replaces only the older one of the same
+/// package. Nothing else of the repository is ever removed here.
 #[tauri::command(async)]
 pub fn accept_proposal(
     app: tauri::AppHandle,
     name: String,
     pr_number: u64,
-    clean_first: bool,
     // The comment left on the pull request, in the language of the interface.
     comment: String,
 ) -> Result<(), String> {
@@ -566,9 +565,6 @@ pub fn accept_proposal(
     let logger = JobLogger::new_step(app.clone(), "acceptTitle", &[("number", &pr_number.to_string()), ("repo", &repo.name)]);
     let dir = Path::new(&repo.dir).to_path_buf();
     let staging_dir = dir.join("staging");
-    // Next to the repository, not inside it: publishing adds everything inside.
-    let folder = dir.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
-    let aside = dir.with_file_name(format!(".{folder}-before-proposal"));
 
     let work = || -> Result<(), String> {
         logger.step("readPr", &[("number", &pr_number.to_string())]);
@@ -621,12 +617,6 @@ pub fn accept_proposal(
             }
         }
 
-        if clean_first {
-            logger.step("preClean", &[]);
-            set_aside(&dir, &aside)?;
-            publish::wipe_packages_and_reinit(&dir)?;
-        }
-
         logger.step("include", &[("count", &deb_paths.len().to_string())]);
         let dir_text = dir.to_string_lossy().to_string();
         for path in &deb_paths {
@@ -650,8 +640,6 @@ pub fn accept_proposal(
 
         logger.step("pushMain", &[]);
         publish::publish(Some(&logger), &repo, &format!("Accept proposal #{pr_number}: {}\n\nBranch: {branch}", repo.name))?;
-        // Published: what was set aside is no longer needed.
-        let _ = fs::remove_dir_all(&aside);
 
         // The pull request: comment, close, branch deleted. The packages are
         // already published, so a refusal here is reported but not undone.
@@ -682,11 +670,6 @@ pub fn accept_proposal(
             Ok(())
         }
         Err(e) => {
-            // Anything that fails before publishing leaves the repository as it was.
-            if aside.exists() {
-                restore_aside(&dir, &aside);
-                let _ = repos::export_signed(&dir);
-            }
             logger.step("error", &[("error", &e)]);
             logger.done(false);
             Err(e)
@@ -694,32 +677,6 @@ pub fn accept_proposal(
     }
 }
 
-/// The folders of the packages and their indexes, moved next to the
-/// repository (a rename: no copy, whatever their size).
-const PACKAGE_DIRS: [&str; 5] = ["pool", "db", "dists", "media", "appstream"];
-
-fn set_aside(dir: &Path, aside: &Path) -> Result<(), String> {
-    let _ = fs::remove_dir_all(aside);
-    fs::create_dir_all(aside).map_err(|e| e.to_string())?;
-    for d in PACKAGE_DIRS {
-        let from = dir.join(d);
-        if from.exists() {
-            fs::rename(&from, aside.join(d)).map_err(|e| format!("{d} could not be set aside: {e}"))?;
-        }
-    }
-    Ok(())
-}
-
-fn restore_aside(dir: &Path, aside: &Path) {
-    for d in PACKAGE_DIRS {
-        let kept = aside.join(d);
-        if kept.exists() {
-            let _ = fs::remove_dir_all(dir.join(d));
-            let _ = fs::rename(&kept, dir.join(d));
-        }
-    }
-    let _ = fs::remove_dir_all(aside);
-}
 
 /// Rejects a proposal: the comment with the reason, the pull request closed
 /// and its branch deleted. Every refusal of GitHub is reported.
@@ -747,30 +704,6 @@ pub fn reject_proposal(name: String, pr_number: u64, comment: String) -> Result<
 #[cfg(test)]
 mod tests {
     use super::*;
-
-    #[test]
-    fn a_failed_proposal_puts_the_packages_back() {
-        let base = std::env::temp_dir().join(format!("soplos-aside-{}", std::process::id()));
-        let _ = fs::remove_dir_all(&base);
-        let dir = base.join("repo");
-        let aside = base.join(".repo-before-proposal");
-        fs::create_dir_all(dir.join("pool/main/k")).unwrap();
-        fs::create_dir_all(dir.join("conf")).unwrap();
-        fs::write(dir.join("pool/main/k/kernel.deb"), "old").unwrap();
-        fs::write(dir.join("conf/distributions"), "Codename: stable").unwrap();
-
-        set_aside(&dir, &aside).unwrap();
-        assert!(!dir.join("pool").exists());
-        assert!(dir.join("conf/distributions").exists(), "the configuration stays");
-        fs::create_dir_all(dir.join("pool/main/n")).unwrap();
-        fs::write(dir.join("pool/main/n/new.deb"), "new").unwrap();
-
-        restore_aside(&dir, &aside);
-        assert_eq!(fs::read_to_string(dir.join("pool/main/k/kernel.deb")).unwrap(), "old");
-        assert!(!dir.join("pool/main/n").exists());
-        assert!(!aside.exists());
-        fs::remove_dir_all(base).unwrap();
-    }
 
     // Talks to GitHub (only reads): run with --ignored.
     #[test]

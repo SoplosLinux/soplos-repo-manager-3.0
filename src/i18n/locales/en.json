@@ -487,7 +487,7 @@
     "confirmAccept": "Accept & publish",
     "acceptExplanation": "{count} packages will be imported into {repo}, signed with GPG, and published to main.",
     "cleanFirstLabel": "Clean existing packages before importing (Pre-clean)",
-    "cleanFirstHint": "Useful when new builds do not replace the old ones by version: removes the packages of the pool before adding the new ones, so no obsolete leftovers stay."
+    "cleanFirstHint": "Careful: it removes ALL the packages of the repository, not only the ones of this proposal, and leaves only the ones it brings. Tick it only to rebuild the whole repository."
   },
   "accounts": {
     "noKeyringTitle": "There is no keyring in this session",

@@ -487,7 +487,7 @@
     "confirmAccept": "Accepter et publier",
     "acceptExplanation": "{count} paquets seront importés dans {repo}, signés avec GPG et publiés dans main.",
     "cleanFirstLabel": "Vider les paquets existants avant d'importer (Nettoyage)",
-    "cleanFirstHint": "Utile quand les nouvelles compilations ne remplacent pas les anciennes par version : vide le pool avant d'ajouter les nouvelles, pour ne pas garder de restes obsolètes."
+    "cleanFirstHint": "Attention : supprime TOUS les paquets du dépôt, pas seulement ceux de cette proposition, et ne garde que ceux qu'elle apporte. À cocher uniquement pour reconstruire tout le dépôt."
   },
   "accounts": {
     "noKeyringTitle": "Il n’y a pas de trousseau dans cette session",
