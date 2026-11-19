@@ -22,6 +22,8 @@ tauri-plugin-shell = "2"
 # File pickers to import and export keys, as in Repo Selector.
 tauri-plugin-dialog = "2"
 tauri-plugin-single-instance = "2"
+# The notification of new proposals, as Soplos Store notifies its updates.
+notify-rust = "4"
 # Reads the metainfo of the packages, for the DEP-11 file of the software centers.
 roxmltree = "0.20"
 # Scales the icons of the packages and reads the size of their screenshots;

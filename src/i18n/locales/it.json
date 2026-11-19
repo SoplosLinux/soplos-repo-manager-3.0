@@ -419,6 +419,7 @@
       "fetchBase": "Recupero del ramo base {branch} da GitHub…",
       "createBranch": "Creazione del ramo della proposta: {branch}…",
       "addPackage": "Aggiunta del pacchetto: {file}",
+      "uploadLarge": "Caricamento con git dei pacchetti grandi ({count})…",
       "commitProposal": "Creazione del commit sul ramo della proposta…",
       "pushBranch": "Caricamento del ramo su GitHub (git push origin {branch})…",
       "openPr": "Apertura della pull request su GitHub…",

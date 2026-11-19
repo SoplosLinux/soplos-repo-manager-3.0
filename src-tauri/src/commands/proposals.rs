@@ -166,6 +166,53 @@ fn upload_blob(owner: &str, repo: &str, file: &Path) -> Result<String, String> {
         .ok_or_else(|| format!("GitHub refused the package {}: {}", file.display(), github_error(&res)))
 }
 
+/// Packages above this size do not go through the blobs API: in base64 inside
+/// a JSON body they pass what GitHub takes in one request, and it answers 422
+/// "your input was too large to process" (a kernel of 92 MB did). They go up
+/// with git instead, which sends the file as it is.
+const API_BLOB_LIMIT: u64 = 25 * 1024 * 1024;
+
+/// GitHub refuses any file above 100 MiB, in a push or through the API.
+const GITHUB_FILE_LIMIT: u64 = 100 * 1024 * 1024;
+
+/// Uploads large packages with git and returns the SHA of each, in order, and
+/// the branch that carries them. The commit holds only those files and has no
+/// parent, so git sends them and nothing of the repository is downloaded,
+/// which is what made git unusable for proposals before. The proposal is then
+/// made with the API over those blobs, and the carrier branch is deleted: the
+/// blobs stay, because the branch of the proposal uses them.
+fn upload_with_git(logger: &JobLogger, owner: &str, repo: &str, files: &[&Path], stamp: u64) -> Result<(Vec<String>, String), String> {
+    let work = std::env::temp_dir().join(format!("soplos-proposal-{}-{stamp}", std::process::id()));
+    let _ = fs::remove_dir_all(&work);
+    fs::create_dir_all(&work).map_err(|e| e.to_string())?;
+    let result = (|| -> Result<(Vec<String>, String), String> {
+        publish::git_logged_ok(Some(logger), &work, &["init", "-q"], API_TIMEOUT)?;
+        let mut shas = Vec::with_capacity(files.len());
+        for file in files {
+            let path = file.to_string_lossy().to_string();
+            let name = file.file_name().map(|n| n.to_string_lossy().to_string()).ok_or("A package has no name")?;
+            let sha = publish::git_logged_ok(Some(logger), &work, &["hash-object", "-w", "--", &path], PUSH_TIMEOUT)?.trim().to_string();
+            publish::git_logged_ok(Some(logger), &work, &["update-index", "--add", "--cacheinfo", &format!("100644,{sha},{name}")], API_TIMEOUT)?;
+            shas.push(sha);
+        }
+        let tree = publish::git_logged_ok(Some(logger), &work, &["write-tree"], API_TIMEOUT)?.trim().to_string();
+        let commit = publish::git_logged_ok(
+            Some(logger),
+            &work,
+            &["-c", "user.name=Soplos Repo Manager", "-c", "user.email=repo-manager@soplos.org", "commit-tree", &tree, "-m", "Packages of a proposal"],
+            API_TIMEOUT,
+        )?
+        .trim()
+        .to_string();
+        let carrier = format!("proposal-upload/{stamp}");
+        let url = format!("https://github.com/{owner}/{repo}.git");
+        publish::git_logged_ok(Some(logger), &work, &["push", &url, &format!("{commit}:refs/heads/{carrier}")], PUSH_TIMEOUT)?;
+        Ok((shas, carrier))
+    })();
+    let _ = fs::remove_dir_all(&work);
+    result
+}
+
 /// Writes the contents of a file of the repository in `dest`. The raw media
 /// type makes curl receive the bytes of the package, not its base64 form.
 fn api_download(endpoint: &str, dest: &Path) -> Result<(), String> {
@@ -216,6 +263,11 @@ fn github_error(value: &serde_json::Value) -> String {
 }
 
 // ── Commands ──────────────────────────────────────────────────────────────────
+
+/// The open pull requests of a repository on GitHub, every page of them.
+pub(crate) fn open_pull_requests(owner: &str, repo: &str) -> Result<Vec<serde_json::Value>, String> {
+    api_get_all(&format!("repos/{owner}/{repo}/pulls?state=open"))
+}
 
 /// Lists open proposals (Pull Requests) on the repository's GitHub remote.
 #[tauri::command(async)]
@@ -334,6 +386,9 @@ pub fn send_proposal(
     // branch is a tree over the one of the base branch and the commit is made
     // there. Nothing of the repository is downloaded and git is not used, so a
     // destination that holds gigabytes of packages costs the package itself.
+    // The branch that carried the large packages, deleted once the proposal
+    // has them or when it fails.
+    let carrier: std::cell::RefCell<Option<String>> = std::cell::RefCell::new(None);
     let run_send = || -> Result<u64, String> {
         logger.step("fetchBase", &[("branch", &base_branch)]);
         let base_ref = api_get(&format!("repos/{owner}/{repo_name}/git/ref/heads/{base_branch}"))?;
@@ -352,18 +407,53 @@ pub fn send_proposal(
             .ok_or_else(|| format!("The tree of {base_branch} could not be read: {}", github_error(&base_commit)))?
             .to_string();
 
-        let mut entries = Vec::new();
+        // What GitHub would refuse anyway stops here, before anything goes up.
+        let mut small: Vec<&Path> = Vec::new();
+        let mut large: Vec<&Path> = Vec::new();
         for p in &paths {
             let src = Path::new(p);
-            let Some(fname) = src.file_name().map(|n| n.to_string_lossy().to_string()) else { continue };
-            logger.step("addPackage", &[("file", &fname)]);
-            let sha = upload_blob(&owner, &repo_name, src)?;
-            entries.push(serde_json::json!({
+            let size = fs::metadata(src).map_err(|e| format!("{} could not be read: {e}", src.display()))?.len();
+            if size > GITHUB_FILE_LIMIT {
+                let name = src.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+                return Err(format!(
+                    "{name} weighs {:.1} MB: GitHub does not accept files above 100 MB",
+                    size as f64 / 1024.0 / 1024.0
+                ));
+            }
+            if size > API_BLOB_LIMIT {
+                large.push(src);
+            } else {
+                small.push(src);
+            }
+        }
+
+        let mut entries = Vec::new();
+        let entry = |fname: &str, sha: &str| {
+            serde_json::json!({
                 "path": format!("staging/{fname}"),
                 "mode": "100644",
                 "type": "blob",
                 "sha": sha
-            }));
+            })
+        };
+        for src in &small {
+            let Some(fname) = src.file_name().map(|n| n.to_string_lossy().to_string()) else { continue };
+            logger.step("addPackage", &[("file", &fname)]);
+            let sha = upload_blob(&owner, &repo_name, src)?;
+            entries.push(entry(&fname, &sha));
+        }
+        if !large.is_empty() {
+            for src in &large {
+                let fname = src.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+                logger.step("addPackage", &[("file", &fname)]);
+            }
+            logger.step("uploadLarge", &[("count", &large.len().to_string())]);
+            let (shas, branch) = upload_with_git(&logger, &owner, &repo_name, &large, timestamp)?;
+            *carrier.borrow_mut() = Some(branch);
+            for (src, sha) in large.iter().zip(shas.iter()) {
+                let fname = src.file_name().map(|n| n.to_string_lossy().to_string()).unwrap_or_default();
+                entries.push(entry(&fname, sha));
+            }
         }
 
         logger.step("commitProposal", &[]);
@@ -435,6 +525,9 @@ pub fn send_proposal(
     };
 
     let result = run_send();
+    if let Some(branch) = carrier.borrow().as_ref() {
+        let _ = api_delete(&format!("repos/{owner}/{repo_name}/git/refs/heads/{branch}"));
+    }
 
     match result {
         Ok(pr_number) => {

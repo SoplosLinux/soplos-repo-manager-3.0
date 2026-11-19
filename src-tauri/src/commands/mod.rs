@@ -4,6 +4,7 @@ pub mod check;
 pub mod credentials;
 pub mod environment;
 pub mod gpg;
+pub mod notify;
 pub mod packages;
 pub mod proposals;
 pub mod publish;

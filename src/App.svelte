@@ -2,6 +2,7 @@
   import { setContext, onMount, type ComponentType } from "svelte";
   import { getCurrentWindow } from "@tauri-apps/api/window";
   import { getVersion } from "@tauri-apps/api/app";
+  import { listen } from "@tauri-apps/api/event";
   import { _ } from "svelte-i18n";
   import { api } from "./lib/api";
   import { progress } from "./lib/progress";
@@ -124,6 +125,17 @@
   };
 
   let active = "repos";
+  // The open proposals of the team, next to the Proposals page.
+  let pendingProposals = 0;
+  $: badges = { proposals: pendingProposals };
+
+  async function readPending() {
+    try {
+      pendingProposals = await api.invoke<number>("pending_proposals");
+    } catch {
+      pendingProposals = 0;
+    }
+  }
   let appVersion = "";
   let envInfo: {
     desktopEnvironment: string;
@@ -142,7 +154,21 @@
     // Initialize job event listeners as early as possible so no events are lost.
     initJobs();
     let unlisten: (() => void) | undefined;
+    let unlistenView: (() => void) | undefined;
+    // GitHub is asked every five minutes while the window is open.
+    readPending();
+    const pendingTimer = setInterval(readPending, 5 * 60 * 1000);
     (async () => {
+      try {
+        // The button of the notification opens the program on Proposals.
+        if (await api.invoke<boolean>("take_start_on_proposals")) select("proposals");
+        unlistenView = await listen<string>("show-view", (event) => {
+          if (views[event.payload]) select(event.payload);
+          readPending();
+        });
+      } catch {
+        // Outside the program: nothing to listen to.
+      }
       try {
         appVersion = await getVersion();
       } catch {
@@ -166,7 +192,11 @@
         frameless = false;
       }
     })();
-    return () => unlisten?.();
+    return () => {
+      unlisten?.();
+      unlistenView?.();
+      clearInterval(pendingTimer);
+    };
   });
 
   function select(id: string) {
@@ -221,7 +251,7 @@
     ? 'window-card'
     : ''}"
 >
-  <Sidebar {tabs} {active} onSelect={select} {appVersion} {envInfo} />
+  <Sidebar {tabs} {active} onSelect={select} {appVersion} {envInfo} {badges} />
 
   {#if frameless}
     <div class="absolute right-2 top-[5px] z-40">

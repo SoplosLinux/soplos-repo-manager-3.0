@@ -87,8 +87,8 @@
     try {
       const folder = await api.invoke<string | null>("pick_folder");
       if (folder) {
-        const found = await api.invoke<{ path: string }[]>("scan_packages", { dir: folder });
-        const debPaths = found.map((f) => f.path);
+        // Every .deb of the folder and its subfolders; no repository needed.
+        const debPaths = await api.invoke<string[]>("find_debs", { paths: [folder] });
         paths = Array.from(new Set([...paths, ...debPaths]));
       }
     } catch (err) {
@@ -113,8 +113,7 @@
         paths = Array.from(new Set([...paths, item]));
       } else {
         try {
-          const found = await api.invoke<{ path: string }[]>("scan_packages", { dir: item });
-          const debPaths = found.map((f) => f.path);
+          const debPaths = await api.invoke<string[]>("find_debs", { paths: [item] });
           paths = Array.from(new Set([...paths, ...debPaths]));
         } catch { /* ignore */ }
       }

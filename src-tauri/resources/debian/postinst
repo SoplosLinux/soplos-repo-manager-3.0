@@ -1,0 +1,11 @@
+#!/bin/sh
+# The check of the proposals of the team, a systemd user timer, turned on for
+# every user, as Soplos Store does with its updates. Without a GitHub account
+# in the keyring the check does nothing. It never makes the installation fail.
+set -e
+
+if [ "$1" = "configure" ] && command -v systemctl >/dev/null 2>&1; then
+    systemctl --global enable soplos-repo-manager-proposals.timer >/dev/null 2>&1 || true
+fi
+
+exit 0

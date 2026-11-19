@@ -101,6 +101,22 @@ fn compare_versions(a: &str, b: &str) -> Ordering {
 
 /// Every .deb inside `path` (or `path` itself), with the folder it sits in,
 /// written from the name of the dropped folder: "7.3.4/V1".
+/// The .deb files inside the folders and files given, in every subfolder, for
+/// the Send page. Unlike scan_packages it needs no repository: whoever sends a
+/// proposal may have none (a collaborator of the team), and nothing is compared
+/// with what a repository has.
+#[tauri::command]
+pub fn find_debs(paths: Vec<String>) -> Vec<String> {
+    let mut found: Vec<(PathBuf, String)> = Vec::new();
+    for path in &paths {
+        collect_debs(Path::new(path), "", &mut found);
+    }
+    let mut debs: Vec<String> = found.into_iter().map(|(path, _)| path.to_string_lossy().to_string()).collect();
+    debs.sort();
+    debs.dedup();
+    debs
+}
+
 pub(crate) fn collect_debs(path: &Path, root_label: &str, out: &mut Vec<(PathBuf, String)>) {
     if path.is_file() {
         if path.extension().is_some_and(|x| x == "deb") {

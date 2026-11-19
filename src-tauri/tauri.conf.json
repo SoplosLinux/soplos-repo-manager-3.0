@@ -49,6 +49,8 @@
       "deb": {
         "section": "devel",
         "priority": "optional",
+        "postInstallScript": "resources/debian/postinst",
+        "preRemoveScript": "resources/debian/prerm",
         "depends": [
           "dpkg-dev",
           "gnupg",
@@ -60,6 +62,8 @@
         "desktopTemplate": "resources/debian/soplos-repo-manager.desktop.hbs",
         "files": {
           "/usr/share/doc/soplos-repo-manager/copyright": "resources/debian/copyright",
+          "/usr/lib/systemd/user/soplos-repo-manager-proposals.service": "resources/systemd/soplos-repo-manager-proposals.service",
+          "/usr/lib/systemd/user/soplos-repo-manager-proposals.timer": "resources/systemd/soplos-repo-manager-proposals.timer",
           "/usr/share/metainfo/org.soplos.repomanager.metainfo.xml": "resources/appstream/org.soplos.repomanager.metainfo.xml",
           "/usr/share/man/man1/soplos-repo-manager.1.gz": "resources/docs/soplos-repo-manager.1.gz",
           "/usr/share/doc/soplos-repo-manager/screenshots/screenshot01.png": "resources/screenshots/screenshot01.png",

@@ -419,6 +419,7 @@
       "fetchBase": "Obteniendo la rama base {branch} de GitHub…",
       "createBranch": "Creando la rama de la propuesta: {branch}…",
       "addPackage": "Añadiendo el paquete: {file}",
+      "uploadLarge": "Subiendo con git los paquetes grandes ({count})…",
       "commitProposal": "Creando el commit en la rama de la propuesta…",
       "pushBranch": "Subiendo la rama a GitHub (git push origin {branch})…",
       "openPr": "Abriendo el pull request en GitHub…",

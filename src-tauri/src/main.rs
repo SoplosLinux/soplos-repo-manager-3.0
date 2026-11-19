@@ -8,5 +8,11 @@ fn main() {
         std::env::set_var("WEBKIT_DISABLE_DMABUF_RENDERER", "1");
     }
 
+    // The systemd user timer asks for the proposals of the team, with no
+    // window: it notifies the new ones and exits.
+    if std::env::args().nth(1).as_deref() == Some("--check-proposals") {
+        std::process::exit(soplos_repo_manager_lib::check_proposals());
+    }
+
     soplos_repo_manager_lib::run();
 }

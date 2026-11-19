@@ -419,6 +419,7 @@
       "fetchBase": "Получение базовой ветки {branch} с GitHub…",
       "createBranch": "Создание ветки предложения: {branch}…",
       "addPackage": "Добавление пакета: {file}",
+      "uploadLarge": "Загрузка больших пакетов через git ({count})…",
       "commitProposal": "Создание коммита в ветке предложения…",
       "pushBranch": "Отправка ветки на GitHub (git push origin {branch})…",
       "openPr": "Открытие pull request на GitHub…",

@@ -1,0 +1,8 @@
+[Unit]
+Description=Soplos Repo Manager check of the proposals of the team
+
+[Service]
+Type=oneshot
+ExecStart=/usr/bin/soplos-repo-manager --check-proposals
+Nice=19
+IOSchedulingClass=idle

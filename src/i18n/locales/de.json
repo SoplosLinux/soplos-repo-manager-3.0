@@ -419,6 +419,7 @@
       "fetchBase": "Basiszweig {branch} wird von GitHub geholt…",
       "createBranch": "Zweig des Vorschlags wird erstellt: {branch}…",
       "addPackage": "Paket wird hinzugefügt: {file}",
+      "uploadLarge": "Große Pakete werden mit git hochgeladen ({count})…",
       "commitProposal": "Commit im Zweig des Vorschlags wird erstellt…",
       "pushBranch": "Zweig wird zu GitHub hochgeladen (git push origin {branch})…",
       "openPr": "Pull-Request wird auf GitHub geöffnet…",

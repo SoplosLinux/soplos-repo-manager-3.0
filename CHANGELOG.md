@@ -12,6 +12,9 @@ First stable release.
 - Manual page (`man soplos-repo-manager`), installed compressed.
 - README with the screenshots, the pages, how a repository is published, the security of the tokens and the shortcuts.
 
+- Notification of the proposals of the team. A systemd user timer, turned on for every user when the package is installed, as Soplos Store does with its updates, runs `soplos-repo-manager --check-proposals` two minutes after the session starts and every 15 minutes: it asks GitHub, with the account of the keyring, for the open pull requests of every repository of the user, and shows a desktop notification for the ones not told yet, each one once, in the language of the session. Its button opens the program on the Proposals page (`--proposals`, also with the program already open). What it looked at and what failed goes to its log (`journalctl --user -u soplos-repo-manager-proposals`). Without a GitHub account it does nothing.
+- The number of open proposals of the team next to the Proposals page, read when the window opens and every five minutes.
+
 ### Changed
 
 - The toolbar of Send looks at the room it has, not at the width of the window: the destination and the buttons share one row while their measured widths fit, and below that they take two cells that fill the bar, so the buttons grow instead of leaving empty space. The destination is short on purpose and cuts a long name.
@@ -30,6 +33,8 @@ First stable release.
 - Accepting a proposal reads every file of the pull request, page after page, and not only the first hundred; the list of proposals shows all of them too.
 - When accepting fails half way, the job bar says so and the temporary folder of the packages is removed, instead of staying "running" and leaving the folder in the repository.
 - Rejecting a proposal also deletes its branch, as accepting does.
+- Send: adding a folder, by its button or by dropping it on the window, failed with "invalid args `paths` for command `scan_packages`": the page still called that command with the folder alone, as it was before it took a list, and the command needs a repository, which a collaborator of the team may not have. The page now uses a command of its own, `find_debs`, that lists the .deb files of the folder and its subfolders without a repository.
+- A proposal with a large package could not be sent: in base64 inside a JSON body, a kernel of 92 MB passed what the blobs API of GitHub takes in one request, and GitHub answered 422 ("your input was too large to process"). Packages above 25 MB now go up with git, all of them in one push of a commit that holds only those files and has no parent, so nothing of the repository is downloaded; the proposal is then made with the API over those blobs as before, and the branch that carried them is deleted. The smaller ones still go through the API. A package above 100 MB, which GitHub refuses anyway, stops the sending before anything goes up, with its size.
 - Texts that showed their key or a fixed Spanish sentence: the save button of a destination, the loading line of Destinations and Accounts, the copy button of a destination and the description placeholder, now in the eight languages.
 
 ## [3.0.0-alpha] - 2026-11-18

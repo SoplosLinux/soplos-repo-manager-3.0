@@ -419,6 +419,7 @@
       "fetchBase": "Récupération de la branche de base {branch} depuis GitHub…",
       "createBranch": "Création de la branche de la proposition : {branch}…",
       "addPackage": "Ajout du paquet : {file}",
+      "uploadLarge": "Envoi des gros paquets avec git ({count})…",
       "commitProposal": "Création du commit sur la branche de la proposition…",
       "pushBranch": "Envoi de la branche sur GitHub (git push origin {branch})…",
       "openPr": "Ouverture de la pull request sur GitHub…",

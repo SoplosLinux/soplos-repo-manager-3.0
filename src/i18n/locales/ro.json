@@ -419,6 +419,7 @@
       "fetchBase": "Se obține ramura de bază {branch} de pe GitHub…",
       "createBranch": "Se creează ramura propunerii: {branch}…",
       "addPackage": "Se adaugă pachetul: {file}",
+      "uploadLarge": "Se încarcă cu git pachetele mari ({count})…",
       "commitProposal": "Se creează commit-ul pe ramura propunerii…",
       "pushBranch": "Se încarcă ramura pe GitHub (git push origin {branch})…",
       "openPr": "Se deschide pull request-ul pe GitHub…",

@@ -52,6 +52,8 @@
   export let onSelect: (id: string) => void;
   export let appVersion: string = "";
   export let envInfo: { desktopEnvironment: string; displayProtocol: string } | null = null;
+  /** A number next to a page: the open proposals of the team. */
+  export let badges: Record<string, number> = {};
 
   const openAbout = getContext<() => void>("openAbout");
 
@@ -127,6 +129,11 @@
         >
           <svelte:component this={tab.icon} size={16} class="shrink-0" />
           <span class="truncate">{tab.label}</span>
+          {#if badges[tab.id]}
+            <span class="ml-auto shrink-0 min-w-[1.25rem] px-1.5 rounded-full bg-primary text-white text-[0.68rem] font-semibold leading-5 text-center">
+              {badges[tab.id]}
+            </span>
+          {/if}
         </button>
       {/if}
     {/each}

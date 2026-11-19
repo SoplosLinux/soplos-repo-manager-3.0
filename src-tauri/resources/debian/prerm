@@ -1,0 +1,9 @@
+#!/bin/sh
+# The timer of the proposals goes away with the program.
+set -e
+
+if { [ "$1" = "remove" ] || [ "$1" = "purge" ]; } && command -v systemctl >/dev/null 2>&1; then
+    systemctl --global disable soplos-repo-manager-proposals.timer >/dev/null 2>&1 || true
+fi
+
+exit 0

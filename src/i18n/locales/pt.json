@@ -419,6 +419,7 @@
       "fetchBase": "A obter o ramo base {branch} do GitHub…",
       "createBranch": "A criar o ramo da proposta: {branch}…",
       "addPackage": "A adicionar o pacote: {file}",
+      "uploadLarge": "A enviar com git os pacotes grandes ({count})…",
       "commitProposal": "A criar o commit no ramo da proposta…",
       "pushBranch": "A enviar o ramo para o GitHub (git push origin {branch})…",
       "openPr": "A abrir o pull request no GitHub…",

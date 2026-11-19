@@ -419,6 +419,7 @@
       "fetchBase": "Getting the base branch {branch} from GitHub…",
       "createBranch": "Making the proposal branch: {branch}…",
       "addPackage": "Adding package: {file}",
+      "uploadLarge": "Uploading the large packages with git ({count})…",
       "commitProposal": "Making the commit on the proposal branch…",
       "pushBranch": "Uploading the branch to GitHub (git push origin {branch})…",
       "openPr": "Opening the pull request on GitHub…",
